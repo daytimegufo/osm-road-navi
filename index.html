@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通称道路指定ナビ - 改善版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+        }
+
+        .control-panel {
+            width: 400px;
+            background: #f8f9fa;
+            border-right: 2px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .header p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .nav-section {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .nav-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .location-input {
+            margin-bottom: 15px;
+        }
+
+        .location-input label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .input-group {
+            position: relative;
+            display: flex;
+            gap: 5px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .btn-icon {
+            width: 45px;
+            height: 45px;
+            border: none;
+            border-radius: 8px;
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-icon:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        .via-point {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .via-point:hover {
+            border-color: #3498db;
+            box-shadow: 0 2px 10px rgba(52, 152, 219, 0.1);
+        }
+
+        .via-point-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .via-point-title {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9em;
+        }
+
+        .btn-remove {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .road-name-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .road-status {
+            font-size: 12px;
+            padding: 5px 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .road-status.found {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .road-status.not-found {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .road-status.searching {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            width: 100%;
+            padding: 12px;
+            background: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .route-info {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .route-info h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .route-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .stat-value {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #7f8c8d;
+            text-transform: uppercase;
+        }
+
+        #viaRoadsList {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            line-height: 1.8;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .map-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .map-btn:hover {
+            background: white;
+            transform: translateY(-1px);
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .control-panel {
+                width: 100%;
+                order: 2;
+                max-height: 50vh;
+            }
+            
+            .map-container {
+                height: 50vh;
+                order: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="control-panel">
+            <div class="header">
+                <h1>🚗 通称道路指定ナビ (改善版)</h1>
+                <p>正確な道路追従ルート生成</p>
+            </div>
+            
+            <div class="nav-section">
+                <h3>📍 出発地・目的地</h3>
+                
+                <div class="location-input">
+                    <label>出発地</label>
+                    <div class="input-group">
+                        <input type="text" id="startLocation" placeholder="住所または地名を入力">
+                        <button class="btn-icon" onclick="getCurrentLocation('start')" title="現在地を取得">📍</button>
+                    </div>
+                </div>
+                
+                <div class="location-input">
+                    <label>目的地</label>
+                    <div class="input-group">
+                        <input type="text" id="endLocation" placeholder="住所または地名を入力">
+                        <button class="btn-icon" onclick="setLocationFromMap('end')" title="地図から選択">🗺️</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="nav-section">
+                <h3>🛣️ 経由道路（通称名）</h3>
+                
+                <div id="viaPoints"></div>
+                
+                <button class="btn-secondary" onclick="addViaPoint()">➕ 経由道路を追加</button>
+                
+                <button class="btn-primary" onclick="calculateRoute()" id="calculateBtn">
+                    🧭 ルート生成 (交差点経由)
+                </button>
+                
+                <button class="btn-secondary" onclick="clearRoute()">🗑️ クリア</button>
+            </div>
+            
+            <div class="nav-section" id="routeInfoSection" style="display: none;">
+                <div class="route-info">
+                    <h4>📊 ルート情報</h4>
+                    <div class="route-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="routeDistance">-</div>
+                            <div class="stat-label">距離</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="routeTime">-</div>
+                            <div class="stat-label">時間</div>
+                        </div>
+                    </div>
+                    
+                    <h4>🛣️ 経由道路</h4>
+                    <div id="viaRoadsList" style="margin-top: 10px; font-size: 14px;"></div>
+                </div>
+            </div>
+            
+            <div id="status" class="status" style="display: none;"></div>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="map-controls">
+                <button class="map-btn" onclick="centerMap()" title="現在地に移動">🎯</button>
+                <button class="map-btn" onclick="fitRoute()" title="ルート全体を表示">🔍</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <script>
+        // グローバル変数
+        let map;
+        let startMarker = null;
+        let endMarker = null;
+        let routeLayer = null;
+        let viaMarkersLayer = null;
+        let currentRoute = null;
+        let viaPointCounter = 0;
+        let isSelectingLocation = false;
+        let locationSelectType = null;
+
+        // アイコン定義
+        const icons = {
+            start: L.divIcon({
+                html: '<div style="background: #27ae60; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">🚗</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            }),
+            end: L.divIcon({
+                html: '<div style="background: #e74c3c; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">🏁</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            }),
+            via: L.divIcon({
+                html: '<div style="background: #f39c12; color: white; border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">📍</div>',
+                iconSize: [25, 25],
+                iconAnchor: [12, 12]
+            })
+        };
+
+        // 距離計算関数
+        function calculateDistance(p1, p2) {
+            const R = 6371; // 地球の半径 (km)
+            const dLat = (p2.lat - p1.lat) * Math.PI / 180;
+            const dLng = (p2.lng - p1.lng) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                     Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) *
+                     Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // 座標配列のダウンサンプリング（Map Matching APIの制限対応）
+        function downsampleCoordinates(coords, maxPoints = 90) {
+            if (coords.length <= maxPoints) return coords;
+            
+            const step = Math.ceil(coords.length / maxPoints);
+            const sampled = [];
+            
+            // 最初の点を必ず含める
+            sampled.push(coords[0]);
+            
+            // 中間点を均等にサンプリング
+            for (let i = step; i < coords.length - 1; i += step) {
+                sampled.push(coords[i]);
+            }
+            
+            // 最後の点を必ず含める
+            sampled.push(coords[coords.length - 1]);
+            
+            return sampled;
+        }
+
+        // OSRM Map Matching APIを使用して道路に沿ったルートを取得
+        async function getMatchedRoute(coordinates) {
+            console.log('Map Matching 開始:', coordinates.length + '点');
+            
+            // 座標数が多すぎる場合はダウンサンプリング
+            const sampledCoords = downsampleCoordinates(coordinates, 90);
+            console.log('サンプリング後:', sampledCoords.length + '点');
+            
+            // Map Matching API用の座標文字列を構築
+            const coordString = sampledCoords
+                .map(coord => `${coord[1]},${coord[0]}`) // [lng,lat]形式
+                .join(';');
+            
+            const url = `https://router.project-osrm.org/match/v1/driving/${coordString}?` +
+                      `geometries=geojson&overview=full&tidy=true&radiuses=${sampledCoords.map(() => '25').join(';')}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.matchings && data.matchings.length > 0) {
+                    return data.matchings[0].geometry;
+                } else {
+                    console.warn('Map Matching 失敗:', data);
+                    return null;
+                }
+            } catch (error) {
+                console.error('Map Matching エラー:', error);
+                return null;
+            }
+        }
+
+        // 2点間の接続ルートを取得
+        async function getConnectionRoute(point1, point2) {
+            const url = `https://router.project-osrm.org/route/v1/driving/` +
+                       `${point1.lng},${point1.lat};${point2.lng},${point2.lat}?` +
+                       `overview=full&geometries=geojson`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.routes && data.routes.length > 0) {
+                    return data.routes[0].geometry;
+                }
+                return null;
+            } catch (error) {
+                console.error('接続ルート取得エラー:', error);
+                return null;
+            }
+        }
+
+        // 交差点から最適な入口・出口を選択する関数（改善版）
+        function selectIntersections(intersections, prevPoint, nextPoint, roadSegments) {
+            if (!intersections || intersections.length === 0) {
+                return { entryIntersection: null, exitIntersection: null };
+            }
+
+            // 道路の全座標から道路の方向を判定
+            let roadDirection = null;
+            if (roadSegments && roadSegments.length > 0) {
+                const firstSeg = roadSegments[0];
+                const lastSeg = roadSegments[roadSegments.length - 1];
+                const firstCoords = firstSeg.coordinates || firstSeg;
+                const lastCoords = lastSeg.coordinates || lastSeg;
+                
+                if (Array.isArray(firstCoords) && firstCoords.length > 0 && 
+                    Array.isArray(lastCoords) && lastCoords.length > 0) {
+                    const startPoint = {
+                        lat: firstCoords[0][0],
+                        lng: firstCoords[0][1]
+                    };
+                    const endPoint = {
+                        lat: lastCoords[lastCoords.length - 1][0],
+                        lng: lastCoords[lastCoords.length - 1][1]
+                    };
+                    
+                    // 道路の方向を判定（出発地により近い方が道路の始点）
+                    const distStartToPrev = calculateDistance(startPoint, prevPoint);
+                    const distEndToPrev = calculateDistance(endPoint, prevPoint);
+                    roadDirection = distStartToPrev < distEndToPrev ? 'forward' : 'reverse';
+                }
+            }
+
+            // 交差点を評価して最適なものを選択
+            const evaluatedIntersections = intersections.map(intersection => {
+                const distFromPrev = calculateDistance(prevPoint, intersection);
+                const distToNext = calculateDistance(intersection, nextPoint);
+                const totalDistance = distFromPrev + distToNext;
+                
+                // 道路上の位置を判定（0=始点、1=終点）
+                let positionOnRoad = 0.5;
+                if (roadSegments) {
+                    let minDist = Infinity;
+                    let totalLength = 0;
+                    let positionLength = 0;
+                    
+                    roadSegments.forEach(seg => {
+                        const coordinates = seg.coordinates || seg;
+                        if (Array.isArray(coordinates)) {
+                            for (let i = 0; i < coordinates.length; i++) {
+                                const coord = coordinates[i];
+                                if (Array.isArray(coord) && coord.length >= 2) {
+                                    const point = { lat: coord[0], lng: coord[1] };
+                                    const dist = calculateDistance(point, intersection);
+                                    
+                                    if (dist < minDist) {
+                                        minDist = dist;
+                                        positionLength = totalLength + i;
+                                    }
+                                    
+                                    if (i > 0) {
+                                        const prevCoord = coordinates[i - 1];
+                                        const prevPoint = { lat: prevCoord[0], lng: prevCoord[1] };
+                                        totalLength += calculateDistance(prevPoint, point);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    if (totalLength > 0) {
+                        positionOnRoad = positionLength / totalLength;
+                    }
+                }
+                
+                return {
+                    intersection,
+                    distFromPrev,
+                    distToNext,
+                    totalDistance,
+                    positionOnRoad,
+                    score: 0 // 後で計算
+                };
+            });
+
+            // スコアを計算（低いほど良い）
+            evaluatedIntersections.forEach(evalInt => {
+                // 基本スコア：総距離
+                evalInt.score = evalInt.totalDistance;
+                
+                // 交差点タイプによるボーナス
+                if (evalInt.intersection.type === 'intersection') {
+                    evalInt.score *= 0.7; // 交差点をより優先
+                }
+                
+                // 接続数によるボーナス
+                if (evalInt.intersection.connectionCount > 3) {
+                    evalInt.score *= 0.8; // 主要交差点をより優先
+                } else if (evalInt.intersection.connectionCount > 2) {
+                    evalInt.score *= 0.9;
+                }
+                
+                // 追加交差点の場合はボーナス
+                if (evalInt.intersection.isAdditional) {
+                    evalInt.score *= 0.85;
+                }
+            });
+
+            // 入口交差点を選択（前の地点に近く、道路の前半にあるもの）
+            const entryCandidate = evaluatedIntersections
+                .filter(e => e.positionOnRoad < 0.7) // 道路の後半70%より前
+                .sort((a, b) => {
+                    // 前の地点からの距離を重視
+                    const scoreA = a.distFromPrev * 2 + a.distToNext;
+                    const scoreB = b.distFromPrev * 2 + b.distToNext;
+                    return scoreA - scoreB;
+                })[0];
+
+            // 出口交差点を選択（次の地点に近く、道路の後半にあるもの）
+            const exitCandidate = evaluatedIntersections
+                .filter(e => e.positionOnRoad > 0.3) // 道路の前半30%より後
+                .sort((a, b) => {
+                    // 次の地点への距離を重視
+                    const scoreA = a.distFromPrev + a.distToNext * 2;
+                    const scoreB = b.distFromPrev + b.distToNext * 2;
+                    return scoreA - scoreB;
+                })[0];
+
+            let entryIntersection = entryCandidate ? entryCandidate.intersection : null;
+            let exitIntersection = exitCandidate ? exitCandidate.intersection : null;
+
+            // 入口と出口が同じ場合の処理
+            if (entryIntersection && exitIntersection && entryIntersection.id === exitIntersection.id) {
+                // より適切な組み合わせを探す
+                if (evaluatedIntersections.length > 1) {
+                    const alternatives = evaluatedIntersections
+                        .filter(e => e.intersection.id !== entryIntersection.id)
+                        .sort((a, b) => a.score - b.score);
+                    
+                    if (alternatives.length > 0) {
+                        // 道路の位置に基づいて代替を選択
+                        if (entryCandidate.positionOnRoad < 0.5) {
+                            // 入口が前半なら、出口を後半から選択
+                            exitIntersection = alternatives.find(a => a.positionOnRoad > 0.5)?.intersection || exitIntersection;
+                        } else {
+                            // 入口が後半なら、入口を前半から選択
+                            entryIntersection = alternatives.find(a => a.positionOnRoad < 0.5)?.intersection || entryIntersection;
+                        }
+                    }
+                }
+            }
+
+            console.log('選択された交差点（改善版）:', {
+                entry: entryIntersection,
+                exit: exitIntersection,
+                isSame: entryIntersection && exitIntersection && entryIntersection.id === exitIntersection.id,
+                candidateCount: evaluatedIntersections.length
+            });
+
+            return { entryIntersection, exitIntersection };
+        }
+
+        // 2つの道路の共通交差点を見つける関数（改善版）
+        function findCommonIntersection(intersections1, intersections2) {
+            if (!intersections1 || !intersections2) return null;
+            
+            const commonIntersections = [];
+            
+            for (const int1 of intersections1) {
+                for (const int2 of intersections2) {
+                    // 座標が非常に近い（10m以内）場合は同じ交差点とみなす
+                    const dist = calculateDistance(int1, int2);
+                    if (dist < 0.01) { // 10m
+                        commonIntersections.push({
+                            ...int1,
+                            distance: dist,
+                            priority: int1.connectionCount + int2.connectionCount
+                        });
+                    }
+                }
+            }
+            
+            // 複数の共通交差点がある場合は、接続数が多いものを優先
+            if (commonIntersections.length > 0) {
+                commonIntersections.sort((a, b) => b.priority - a.priority);
+                console.log(`共通交差点を${commonIntersections.length}箇所発見、最優先を選択:`, commonIntersections[0]);
+                return commonIntersections[0];
+            }
+            
+            return null;
+        }
+
+        // 道路が実際に接続しているかを確認する関数
+        function areRoadsConnected(roadInfo1, roadInfo2) {
+            // 両方の道路の全座標を取得
+            const coords1 = [];
+            const coords2 = [];
+            
+            roadInfo1.roadSegments.forEach(seg => {
+                const coordinates = seg.coordinates || seg;
+                if (Array.isArray(coordinates)) {
+                    coordinates.forEach(coord => {
+                        if (Array.isArray(coord) && coord.length >= 2) {
+                            coords1.push({ lat: coord[0], lng: coord[1] });
+                        }
+                    });
+                }
+            });
+            
+            roadInfo2.roadSegments.forEach(seg => {
+                const coordinates = seg.coordinates || seg;
+                if (Array.isArray(coordinates)) {
+                    coordinates.forEach(coord => {
+                        if (Array.isArray(coord) && coord.length >= 2) {
+                            coords2.push({ lat: coord[0], lng: coord[1] });
+                        }
+                    });
+                }
+            });
+            
+            // 共通の座標点があるかチェック
+            for (const c1 of coords1) {
+                for (const c2 of coords2) {
+                    if (calculateDistance(c1, c2) < 0.005) { // 5m以内
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        // 座標結果の表示関数（Map Matching版では使用しない）
+        function displayCoordinates(viaPoints) {
+            // この関数は新しいMap Matching版では使用しない
+            console.log('displayCoordinates: Map Matching版では不要');
+        }
+
+        // OSM道路検索関数（交差点情報も取得・改善版）
+        async function searchOSMRoad(roadName, bbox) {
+            console.log('OSM道路検索開始:', roadName);
+            
+            // より広範囲の交差点を検出するため、他の道路も含めて検索
+            const query = `
+                [out:json][timeout:25];
+                (
+                  way["highway"]["name"="${roadName}"](${bbox});
+                  way["highway"]["alt_name"="${roadName}"](${bbox});
+                  way["highway"]["name:ja"="${roadName}"](${bbox});
+                );
+                (._;>;);
+                out geom;
+            `;
+
+            const response = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `data=${encodeURIComponent(query)}`
+            });
+
+            if (!response.ok) {
+                throw new Error('道路データの取得に失敗しました');
+            }
+
+            const osmData = await response.json();
+            console.log('OSM Response:', osmData);
+            
+            const ways = osmData.elements.filter(el => el.type === 'way' && el.geometry);
+            const nodes = osmData.elements.filter(el => el.type === 'node');
+            
+            if (ways.length === 0) {
+                console.log('道路が見つかりません:', roadName);
+                return { roadSegments: [], intersections: [] };
+            }
+
+            // 交差点検出用に他の主要道路との交差も検索（改善版）
+            const intersectionQuery = `
+                [out:json][timeout:25];
+                (
+                  way["highway"]["name"="${roadName}"](${bbox});
+                  way["highway"]["alt_name"="${roadName}"](${bbox});
+                  way["highway"]["name:ja"="${roadName}"](${bbox});
+                )->.target;
+                way["highway"~"trunk|primary|secondary|tertiary|unclassified|residential"]["name"](${bbox})->.others;
+                node(w.target)->.target_nodes;
+                node(w.others)->.other_nodes;
+                node.target_nodes.other_nodes;
+                out;
+            `;
+
+            let additionalIntersections = [];
+            try {
+                const intersectionResponse = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `data=${encodeURIComponent(intersectionQuery)}`
+                });
+                
+                if (intersectionResponse.ok) {
+                    const intersectionData = await intersectionResponse.json();
+                    additionalIntersections = intersectionData.elements.filter(el => el.type === 'node');
+                    console.log('追加交差点検出:', additionalIntersections.length);
+                }
+            } catch (error) {
+                console.warn('追加交差点検索エラー:', error);
+            }
+
+            // ノードの使用回数をカウント（交差点の検出）
+            const nodeUsageCount = {};
+            const nodeWays = {}; // どのwayに属しているかを記録
+            
+            ways.forEach(way => {
+                if (way.nodes) {
+                    way.nodes.forEach(nodeId => {
+                        nodeUsageCount[nodeId] = (nodeUsageCount[nodeId] || 0) + 1;
+                        if (!nodeWays[nodeId]) nodeWays[nodeId] = [];
+                        nodeWays[nodeId].push(way.id);
+                    });
+                }
+            });
+
+            // 交差点を抽出（複数のwayで共有されているnode、または道路の端点）
+            const intersections = [];
+            const nodeMap = {};
+            
+            // ノード情報をマップ化
+            nodes.forEach(node => {
+                if (node.id && node.lat && node.lon) {
+                    nodeMap[node.id] = { 
+                        lat: node.lat, 
+                        lng: node.lon, 
+                        id: node.id,
+                        tags: node.tags || {}
+                    };
+                }
+            });
+
+            // 追加交差点もマップに追加
+            additionalIntersections.forEach(node => {
+                if (node.id && node.lat && node.lon && !nodeMap[node.id]) {
+                    nodeMap[node.id] = { 
+                        lat: node.lat, 
+                        lng: node.lon, 
+                        id: node.id,
+                        tags: node.tags || {},
+                        isAdditional: true
+                    };
+                }
+            });
+
+            // 交差点候補を収集（改善版）
+            const intersectionSet = new Set();
+            
+            ways.forEach(way => {
+                if (way.nodes && way.nodes.length > 0) {
+                    // 道路の始点と終点は必ず交差点候補
+                    const startNodeId = way.nodes[0];
+                    const endNodeId = way.nodes[way.nodes.length - 1];
+                    
+                    [startNodeId, endNodeId].forEach(nodeId => {
+                        if (nodeMap[nodeId]) {
+                            intersectionSet.add(nodeId);
+                        }
+                    });
+                    
+                    // 中間ノードも検査
+                    way.nodes.forEach((nodeId, index) => {
+                        if (nodeMap[nodeId]) {
+                            // 交差点の可能性がある条件
+                            // 1. 複数のwayで共有されている
+                            // 2. traffic_signals, crossing などのタグがある
+                            // 3. 追加交差点として検出された
+                            const node = nodeMap[nodeId];
+                            if (nodeUsageCount[nodeId] > 1 || 
+                                node.tags.highway === 'traffic_signals' ||
+                                node.tags.highway === 'crossing' ||
+                                node.tags.junction ||
+                                node.isAdditional) {
+                                intersectionSet.add(nodeId);
+                            }
+                        }
+                    });
+                }
+            });
+
+            // 交差点配列を構築
+            intersectionSet.forEach(nodeId => {
+                const node = nodeMap[nodeId];
+                if (node) {
+                    intersections.push({
+                        ...node,
+                        type: nodeUsageCount[nodeId] > 1 ? 'intersection' : 'endpoint',
+                        connectionCount: nodeUsageCount[nodeId] || 1,
+                        connectedWays: nodeWays[nodeId] || []
+                    });
+                }
+            });
+
+            // 道路セグメントを構築
+            const roadSegments = [];
+            ways.forEach(way => {
+                if (way.geometry && way.geometry.length > 0) {
+                    const coordinates = way.geometry.map(node => [node.lat, node.lon]);
+                    roadSegments.push({
+                        coordinates: coordinates,
+                        wayId: way.id,
+                        tags: way.tags || {}
+                    });
+                }
+            });
+
+            console.log(`${roadName}: セグメント数=${roadSegments.length}, 交差点数=${intersections.length}`);
+            
+            return { roadSegments, intersections };
+        }
+
+        // 道路名検索関数（交差点情報も保存）
+        async function searchRoadName(viaId, roadName) {
+            console.log('道路名検索開始:', { viaId, roadName });
+            
+            if (!roadName || !roadName.trim()) {
+                console.log('道路名が空です');
+                return;
+            }
+
+            const statusDiv = document.getElementById(`roadStatus_${viaId}`);
+            if (!statusDiv) {
+                console.error(`Status div not found for viaId: ${viaId}`);
+                return;
+            }
+
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'road-status searching';
+            statusDiv.textContent = '道路を検索中...';
+
+            try {
+                const bbox = '35.4,139.4,35.9,140.0'; // 東京周辺（拡大版）
+                const { roadSegments, intersections } = await searchOSMRoad(roadName, bbox);
+                
+                if (roadSegments && roadSegments.length > 0) {
+                    // 仮の前後地点（道路の中心点を基準に設定）
+                    let allLats = [];
+                    let allLngs = [];
+                    roadSegments.forEach(segment => {
+                        const coordinates = segment.coordinates || segment;
+                        if (Array.isArray(coordinates)) {
+                            coordinates.forEach(point => {
+                                if (point && typeof point[0] === 'number' && typeof point[1] === 'number') {
+                                    allLats.push(point[0]);
+                                    allLngs.push(point[1]);
+                                }
+                            });
+                        }
+                    });
+                    
+                    if (allLats.length === 0 || allLngs.length === 0) {
+                        throw new Error('有効な座標が見つかりません');
+                    }
+                    
+                    const centerLat = allLats.reduce((a, b) => a + b, 0) / allLats.length;
+                    const centerLng = allLngs.reduce((a, b) => a + b, 0) / allLngs.length;
+                    
+                    // 道路の両端を仮の前後地点とする
+                    const tempStart = { lat: allLats[0], lng: allLngs[0] };
+                    const tempEnd = { lat: allLats[allLats.length - 1], lng: allLngs[allLngs.length - 1] };
+                    
+                    console.log('extractViaPoints 呼び出し前');
+                    const viaPoints = extractViaPoints(roadSegments, roadName, tempStart, tempEnd);
+                    console.log('extractViaPoints 呼び出し後:', viaPoints);
+                    
+                    if (viaPoints && viaPoints.length > 0) {
+                        statusDiv.className = 'road-status found';
+                        statusDiv.textContent = `✓ ${roadName} (道路を検出, 交差点${intersections.length}箇所)`;
+                        
+                        // 経由点データを保存（交差点情報も含む）
+                        const viaPointElement = document.getElementById(`viaPoint_${viaId}`);
+                        if (viaPointElement) {
+                            viaPointElement.dataset.viaPoints = JSON.stringify(viaPoints);
+                            viaPointElement.dataset.roadSegments = JSON.stringify(roadSegments);
+                            viaPointElement.dataset.intersections = JSON.stringify(intersections);
+                            console.log('データ保存完了');
+                        }
+                        
+                        // 地図に表示（道路セグメントと交差点）
+                        displayViaPointsOnMap(viaId, intersections, roadName);
+                        
+                        // グローバルステータス更新
+                        showStatus(`${roadName} を検出しました (交差点${intersections.length}箇所)`, 'success');
+                    } else {
+                        throw new Error('経由点を抽出できませんでした');
+                    }
+                } else {
+                    statusDiv.className = 'road-status not-found';
+                    statusDiv.textContent = `✗ ${roadName} が見つかりません`;
+                    showStatus(`${roadName} が見つかりませんでした`, 'error');
+                }
+            } catch (error) {
+                console.error('道路検索エラー:', error);
+                statusDiv.className = 'road-status not-found';
+                statusDiv.textContent = `✗ 検索エラー: ${error.message}`;
+                showStatus(`${roadName} の検索でエラーが発生しました: ${error.message}`, 'error');
+            }
+        }
+
+        // 代表座標の抽出関数（改善版）
+        function extractViaPoints(roadSegments, roadName, prevPoint, nextPoint) {
+            console.log('extractViaPoints: 簡易表示用');
+            
+            if (!roadSegments || roadSegments.length === 0) {
+                return [];
+            }
+
+            // すべての座標を収集
+            const allCoords = [];
+            roadSegments.forEach(segment => {
+                const coordinates = segment.coordinates || segment;
+                if (Array.isArray(coordinates)) {
+                    coordinates.forEach(coord => {
+                        if (Array.isArray(coord) && coord.length >= 2) {
+                            allCoords.push({
+                                lat: coord[0],
+                                lng: coord[1]
+                            });
+                        }
+                    });
+                }
+            });
+
+            if (allCoords.length === 0) {
+                console.log('有効な座標がありません');
+                return [];
+            }
+
+            // 簡易版：最初と中間と最後の座標を返す
+            const result = [];
+            
+            // 最初の座標
+            if (allCoords.length > 0) {
+                result.push({
+                    lat: allCoords[0].lat,
+                    lng: allCoords[0].lng,
+                    type: 'via',
+                    roadName: roadName,
+                    index: 0
+                });
+            }
+            
+            // 中間座標（座標数が3以上の場合）
+            if (allCoords.length > 2) {
+                const midIndex = Math.floor(allCoords.length / 2);
+                result.push({
+                    lat: allCoords[midIndex].lat,
+                    lng: allCoords[midIndex].lng,
+                    type: 'via',
+                    roadName: roadName,
+                    index: 1
+                });
+            }
+            
+            // 最後の座標（座標数が2以上の場合）
+            if (allCoords.length > 1) {
+                result.push({
+                    lat: allCoords[allCoords.length - 1].lat,
+                    lng: allCoords[allCoords.length - 1].lng,
+                    type: 'via',
+                    roadName: roadName,
+                    index: result.length
+                });
+            }
+            
+            console.log(`${roadName}: 抽出された代表点数=${result.length}`);
+            return result;
+        }
+
+        // 経由点を地図に表示する関数（交差点も表示）
+        function displayViaPointsOnMap(viaId, intersections, roadName) {
+            console.log('経由点地図表示（交差点版）:', { viaId, roadName, intersectionCount: intersections ? intersections.length : 0 });
+            
+            if (!viaMarkersLayer) {
+                console.error('viaMarkersLayer が初期化されていません');
+                return;
+            }
+
+            // 既存のマーカーをクリア（該当する道路のみ）
+            viaMarkersLayer.eachLayer(layer => {
+                if (layer.viaId === viaId) {
+                    viaMarkersLayer.removeLayer(layer);
+                }
+            });
+
+            // 道路セグメントの表示（半透明の赤線）
+            const roadSegmentsData = document.getElementById(`viaPoint_${viaId}`)?.dataset.roadSegments;
+            if (roadSegmentsData) {
+                try {
+                    const roadSegments = JSON.parse(roadSegmentsData);
+                    roadSegments.forEach(segment => {
+                        // segmentがオブジェクトの場合とそうでない場合の両方に対応
+                        const coordinates = segment.coordinates || segment;
+                        if (Array.isArray(coordinates)) {
+                            const polyline = L.polyline(coordinates, {
+                                color: '#e74c3c',
+                                weight: 3,
+                                opacity: 0.5
+                            }).addTo(viaMarkersLayer);
+                            polyline.viaId = viaId;
+                        }
+                    });
+                } catch (error) {
+                    console.error('道路セグメント表示エラー:', error);
+                }
+            }
+            
+            // 交差点を表示
+            if (intersections && Array.isArray(intersections)) {
+                intersections.forEach((intersection, index) => {
+                    if (intersection && typeof intersection.lat === 'number' && typeof intersection.lng === 'number') {
+                        // 交差点の種類に応じてアイコンを変更
+                        let iconColor;
+                        let iconSize;
+                        if (intersection.type === 'intersection' && intersection.connectionCount > 3) {
+                            iconColor = '#e74c3c'; // 主要交差点は赤
+                            iconSize = 24;
+                        } else if (intersection.type === 'intersection') {
+                            iconColor = '#3498db'; // 通常の交差点は青
+                            iconSize = 20;
+                        } else {
+                            iconColor = '#9b59b6'; // 端点は紫
+                            iconSize = 16;
+                        }
+                        
+                        const icon = L.divIcon({
+                            html: `<div style="background: ${iconColor}; color: white; border-radius: 50%; width: ${iconSize}px; height: ${iconSize}px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 10px;">●</div>`,
+                            iconSize: [iconSize, iconSize],
+                            iconAnchor: [iconSize/2, iconSize/2]
+                        });
+                        
+                        const popupContent = `
+                            <strong>${roadName}</strong><br>
+                            ${intersection.type === 'intersection' ? '交差点' : '端点'}<br>
+                            接続数: ${intersection.connectionCount || 1}<br>
+                            <small>ID: ${intersection.id}</small>
+                        `;
+                        
+                        const marker = L.marker([intersection.lat, intersection.lng], { icon })
+                            .bindPopup(popupContent)
+                            .addTo(viaMarkersLayer);
+                        
+                        marker.viaId = viaId;
+                    }
+                });
+            }
+            
+            console.log('道路・交差点表示完了');
+        }
+
+        // ステータス表示関数
+        function showStatus(message, type = 'info') {
+            console.log('Status:', message, type);
+            const statusDiv = document.getElementById('status');
+            if (statusDiv) {
+                statusDiv.className = `status ${type}`;
+                statusDiv.textContent = message;
+                statusDiv.style.display = 'block';
+            }
+        }
+
+        // ローディング表示制御
+        function showLoading(show = true) {
+            const loading = document.getElementById('loading');
+            if (loading) {
+                loading.className = show ? 'loading show' : 'loading';
+            }
+        }
+
+        // 地図初期化
+        function initMap() {
+            console.log('地図初期化開始');
+            
+            map = L.map('map').setView([35.6762, 139.6503], 11);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            viaMarkersLayer = L.layerGroup().addTo(map);
+
+            // 地図クリックイベント
+            map.on('click', function(e) {
+                if (isSelectingLocation) {
+                    setLocationCoordinates(locationSelectType, e.latlng.lat, e.latlng.lng);
+                    isSelectingLocation = false;
+                    locationSelectType = null;
+                    map.getContainer().style.cursor = '';
+                }
+            });
+            
+            console.log('地図初期化完了');
+        }
+
+        // 住所検索
+        async function geocodeAddress(address) {
+            console.log('住所検索:', address);
+            
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&accept-language=ja&countrycodes=jp`
+                );
+                const data = await response.json();
+                
+                if (data.length > 0) {
+                    const result = {
+                        lat: parseFloat(data[0].lat),
+                        lng: parseFloat(data[0].lon)
+                    };
+                    console.log('住所検索結果:', result);
+                    return result;
+                }
+                throw new Error('住所が見つかりません');
+            } catch (error) {
+                console.error('住所検索エラー:', error);
+                throw new Error('住所検索に失敗しました');
+            }
+        }
+
+        // 現在地取得
+        function getCurrentLocation(type) {
+            console.log('現在地取得:', type);
+            
+            if (!navigator.geolocation) {
+                alert('お使いのブラウザは位置情報に対応していません');
+                return;
+            }
+
+            showLoading(true);
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    setLocationCoordinates(type, lat, lng);
+                    showLoading(false);
+                },
+                (error) => {
+                    console.error('現在地取得エラー:', error);
+                    alert('現在地の取得に失敗しました');
+                    showLoading(false);
+                }
+            );
+        }
+
+        // 座標から住所を逆ジオコーディング
+        async function reverseGeocode(lat, lng) {
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ja`
+                );
+                const data = await response.json();
+                return data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            } catch (error) {
+                return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            }
+        }
+
+        // 座標設定
+        async function setLocationCoordinates(type, lat, lng) {
+            console.log('座標設定:', { type, lat, lng });
+            
+            const address = await reverseGeocode(lat, lng);
+            
+            if (type === 'start') {
+                document.getElementById('startLocation').value = address;
+                if (startMarker) map.removeLayer(startMarker);
+                startMarker = L.marker([lat, lng], { icon: icons.start })
+                    .bindPopup('出発地')
+                    .addTo(map);
+            } else if (type === 'end') {
+                document.getElementById('endLocation').value = address;
+                if (endMarker) map.removeLayer(endMarker);
+                endMarker = L.marker([lat, lng], { icon: icons.end })
+                    .bindPopup('目的地')
+                    .addTo(map);
+            }
+        }
+
+        // 地図から位置選択
+        function setLocationFromMap(type) {
+            isSelectingLocation = true;
+            locationSelectType = type;
+            map.getContainer().style.cursor = 'crosshair';
+            alert('地図上をクリックして位置を選択してください');
+        }
+
+        // 経由地点追加
+        function addViaPoint() {
+            console.log('経由地点追加:', viaPointCounter + 1);
+            
+            viaPointCounter++;
+            const viaPointsContainer = document.getElementById('viaPoints');
+            
+            if (!viaPointsContainer) {
+                console.error('viaPoints container が見つかりません');
+                return;
+            }
+            
+            const viaPointDiv = document.createElement('div');
+            viaPointDiv.className = 'via-point';
+            viaPointDiv.id = `viaPoint_${viaPointCounter}`;
+            
+            viaPointDiv.innerHTML = `
+                <div class="via-point-header">
+                    <span class="via-point-title">経由道路 ${viaPointCounter}</span>
+                    <button class="btn-remove" onclick="removeViaPoint(${viaPointCounter})">×</button>
+                </div>
+                <input type="text" class="road-name-input" placeholder="例: 外堀通り, 青山通り, 甲州街道" 
+                       onchange="searchRoadName(${viaPointCounter}, this.value)">
+                <div class="road-status" id="roadStatus_${viaPointCounter}" style="display: none;"></div>
+            `;
+            
+            viaPointsContainer.appendChild(viaPointDiv);
+            console.log('経由地点追加完了:', viaPointCounter);
+        }
+
+        // 経由地点削除
+        function removeViaPoint(id) {
+            console.log('経由地点削除:', id);
+            
+            const viaPoint = document.getElementById(`viaPoint_${id}`);
+            if (viaPoint) {
+                // 地図から該当するマーカーと道路を削除
+                if (viaMarkersLayer) {
+                    viaMarkersLayer.eachLayer(layer => {
+                        if (layer.viaId === id) {
+                            viaMarkersLayer.removeLayer(layer);
+                        }
+                    });
+                }
+                
+                viaPoint.remove();
+                console.log('経由地点削除完了:', id);
+            }
+        }
+
+        // ルート計算（Map Matching版 + 交差点使用 + Turf.js改善版）
+        async function calculateRoute() {
+            console.log('ルート計算開始（Map Matching + 交差点 + Turf.js版）');
+            
+            const startAddress = document.getElementById('startLocation').value.trim();
+            const endAddress = document.getElementById('endLocation').value.trim();
+
+            if (!startAddress || !endAddress) {
+                alert('出発地と目的地を入力してください');
+                return;
+            }
+
+            showLoading(true);
+            document.getElementById('calculateBtn').disabled = true;
+            showStatus('ルートを計算中...', 'info');
+
+            try {
+                // 出発地・目的地の座標取得
+                let startCoords, endCoords;
+
+                if (startMarker) {
+                    startCoords = { lat: startMarker.getLatLng().lat, lng: startMarker.getLatLng().lng };
+                } else {
+                    startCoords = await geocodeAddress(startAddress);
+                    if (startMarker) map.removeLayer(startMarker);
+                    startMarker = L.marker([startCoords.lat, startCoords.lng], { icon: icons.start })
+                        .bindPopup('出発地')
+                        .addTo(map);
+                }
+
+                if (endMarker) {
+                    endCoords = { lat: endMarker.getLatLng().lat, lng: endMarker.getLatLng().lng };
+                } else {
+                    endCoords = await geocodeAddress(endAddress);
+                    if (endMarker) map.removeLayer(endMarker);
+                    endMarker = L.marker([endCoords.lat, endCoords.lng], { icon: icons.end })
+                        .bindPopup('目的地')
+                        .addTo(map);
+                }
+
+                // 経由道路の情報を収集
+                const roadInfoList = [];
+                const allViaPointElements = document.querySelectorAll('.via-point');
+                
+                for (const element of allViaPointElements) {
+                    const roadSegmentsData = element.dataset.roadSegments;
+                    const intersectionsData = element.dataset.intersections;
+                    const roadNameInput = element.querySelector('.road-name-input');
+                    
+                    if (roadSegmentsData && roadNameInput && roadNameInput.value.trim()) {
+                        try {
+                            const roadSegments = JSON.parse(roadSegmentsData);
+                            const intersections = intersectionsData ? JSON.parse(intersectionsData) : [];
+                            const roadName = roadNameInput.value.trim();
+                            
+                            roadInfoList.push({
+                                element: element,
+                                roadName: roadName,
+                                roadSegments: roadSegments,
+                                intersections: intersections
+                            });
+                        } catch (error) {
+                            console.error('道路データ解析エラー:', error);
+                        }
+                    }
+                }
+
+                if (roadInfoList.length === 0) {
+                    throw new Error('有効な経由道路が見つかりません。道路検索を確認してください。');
+                }
+
+                // 全体のルートを構築
+                const completeRoute = [];
+                let currentPosition = startCoords;
+                const selectedIntersections = []; // 選択された交差点を記録
+
+                // 地図上の既存のルートをクリア
+                if (routeLayer) map.removeLayer(routeLayer);
+                if (viaMarkersLayer) viaMarkersLayer.clearLayers();
+
+                // 各道路セグメントを処理
+                for (let i = 0; i < roadInfoList.length; i++) {
+                    const roadInfo = roadInfoList[i];
+                    showStatus(`${roadInfo.roadName} のルートを計算中...`, 'info');
+                    
+                    // 次の目的地を決定
+                    let nextDestination;
+                    if (i < roadInfoList.length - 1) {
+                        // 次の道路との共通交差点を探す
+                        const commonIntersection = findCommonIntersection(
+                            roadInfo.intersections,
+                            roadInfoList[i + 1].intersections
+                        );
+                        
+                        if (commonIntersection) {
+                            nextDestination = commonIntersection;
+                            console.log(`${roadInfo.roadName} と ${roadInfoList[i + 1].roadName} の共通交差点を使用`);
+                        } else {
+                            // 道路が実際に接続しているか確認
+                            const connected = areRoadsConnected(roadInfo, roadInfoList[i + 1]);
+                            if (!connected) {
+                                console.warn(`警告: ${roadInfo.roadName} と ${roadInfoList[i + 1].roadName} は接続していない可能性があります`);
+                            }
+                            
+                            // 共通交差点がない場合は、次の道路の最も近い交差点を選択
+                            const { entryIntersection } = selectIntersections(
+                                roadInfoList[i + 1].intersections,
+                                currentPosition,
+                                endCoords,
+                                roadInfoList[i + 1].roadSegments
+                            );
+                            nextDestination = entryIntersection || endCoords;
+                        }
+                    } else {
+                        nextDestination = endCoords;
+                    }
+                    
+                    // この道路の入口・出口交差点を選択（改善版）
+                    const { entryIntersection, exitIntersection } = selectIntersections(
+                        roadInfo.intersections,
+                        currentPosition,
+                        nextDestination,
+                        roadInfo.roadSegments
+                    );
+                    
+                    if (!entryIntersection || !exitIntersection) {
+                        console.warn(`${roadInfo.roadName} の交差点が見つかりません:`, {
+                            交差点総数: roadInfo.intersections.length,
+                            入口交差点: entryIntersection,
+                            出口交差点: exitIntersection
+                        });
+                        continue;
+                    }
+                    
+                    selectedIntersections.push({
+                        roadName: roadInfo.roadName,
+                        entry: entryIntersection,
+                        exit: exitIntersection
+                    });
+                    
+                    // 最初の道路の場合、出発地から入口交差点への接続
+                    if (i === 0 && calculateDistance(currentPosition, entryIntersection) > 0.05) {
+                        const connectionGeometry = await getConnectionRoute(currentPosition, entryIntersection);
+                        if (connectionGeometry) {
+                            completeRoute.push(connectionGeometry);
+                        }
+                    }
+                    
+                    // 入口と出口が異なる場合、道路に沿ったルートを生成（Turf.js使用）
+                    if (entryIntersection.id !== exitIntersection.id) {
+                        try {
+                            // 1) MultiLineString を作成（新しい形式に対応）
+                            const lineStrings = roadInfo.roadSegments.map(seg => {
+                                const coords = seg.coordinates || seg;
+                                return coords.map(pt => [pt[1], pt[0]]); // GeoJSON: [lng,lat]
+                            });
+                            
+                            const multi = turf.multiLineString(lineStrings);
+                            
+                            // 2) 一本の LineString にマージ
+                            const merged = turf.lineMerge(multi);
+                            
+                            // 3) マージ結果の確認
+                            let lineToSlice;
+                            if (merged.type === 'Feature' && merged.geometry.type === 'LineString') {
+                                lineToSlice = merged;
+                            } else if (merged.type === 'FeatureCollection' && merged.features.length > 0) {
+                                // 最も長いLineStringを選択
+                                lineToSlice = merged.features.reduce((longest, current) => {
+                                    if (current.geometry.type !== 'LineString') return longest;
+                                    const currentLength = turf.length(current);
+                                    const longestLength = longest ? turf.length(longest) : 0;
+                                    return currentLength > longestLength ? current : longest;
+                                }, null);
+                            }
+                            
+                            if (lineToSlice) {
+                                // 4) entry⇔exit の区間だけ切り出し
+                                const sliced = turf.lineSlice(
+                                    turf.point([entryIntersection.lng, entryIntersection.lat]),
+                                    turf.point([exitIntersection.lng, exitIntersection.lat]),
+                                    lineToSlice
+                                );
+                                
+                                // 5) Leaflet 用に [lat,lng] 形式の配列に戻す
+                                const roadCoords = sliced.geometry.coordinates.map(c => [c[1], c[0]]);
+                                
+                                // 6) Map Matching へ渡す
+                                const matchedGeometry = await getMatchedRoute(roadCoords);
+                                if (matchedGeometry) {
+                                    completeRoute.push(matchedGeometry);
+                                } else {
+                                    // Map Matching が失敗したら、元の切り出した座標を使用
+                                    completeRoute.push({
+                                        type: 'LineString',
+                                        coordinates: sliced.geometry.coordinates // GeoJSON [lng,lat]
+                                    });
+                                }
+                            } else {
+                                console.warn('道路をマージできませんでした:', roadInfo.roadName);
+                                // フォールバック：単純な直線接続
+                                const connectionGeometry = await getConnectionRoute(entryIntersection, exitIntersection);
+                                if (connectionGeometry) {
+                                    completeRoute.push(connectionGeometry);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Turf.js処理エラー:', error);
+                            // エラー時のフォールバック：単純な接続
+                            const connectionGeometry = await getConnectionRoute(entryIntersection, exitIntersection);
+                            if (connectionGeometry) {
+                                completeRoute.push(connectionGeometry);
+                            }
+                        }
+                    }
+                    
+                    // UIを更新
+                    const statusDiv = roadInfo.element.querySelector('.road-status');
+                    if (statusDiv) {
+                        statusDiv.textContent = `✓ ${roadInfo.roadName} (ルート計算完了)`;
+                        statusDiv.className = 'road-status found';
+                    }
+                    
+                    // 道路セグメントを地図に表示（薄い赤線）
+                    roadInfo.roadSegments.forEach(segment => {
+                        const coordinates = segment.coordinates || segment;
+                        if (Array.isArray(coordinates)) {
+                            L.polyline(coordinates, {
+                                color: '#e74c3c',
+                                weight: 3,
+                                opacity: 0.5
+                            }).addTo(viaMarkersLayer);
+                        }
+                    });
+                    
+                    // 選択された交差点をマーカーで表示（詳細情報付き）
+                    if (entryIntersection.id !== exitIntersection.id) {
+                        // 入口交差点
+                        L.marker([entryIntersection.lat, entryIntersection.lng], { icon: icons.via })
+                            .bindPopup(`${roadInfo.roadName}<br>入口交差点<br>ID: ${entryIntersection.id}<br>接続数: ${entryIntersection.connectionCount || 1}`)
+                            .addTo(viaMarkersLayer);
+                        
+                        // 出口交差点
+                        L.marker([exitIntersection.lat, exitIntersection.lng], { icon: icons.via })
+                            .bindPopup(`${roadInfo.roadName}<br>出口交差点<br>ID: ${exitIntersection.id}<br>接続数: ${exitIntersection.connectionCount || 1}`)
+                            .addTo(viaMarkersLayer);
+                    } else {
+                        // 入口と出口が同じ場合
+                        L.marker([entryIntersection.lat, entryIntersection.lng], { icon: icons.via })
+                            .bindPopup(`${roadInfo.roadName}<br>通過交差点<br>ID: ${entryIntersection.id}<br>接続数: ${entryIntersection.connectionCount || 1}`)
+                            .addTo(viaMarkersLayer);
+                    }
+                    
+                    // デバッグ情報をコンソールに出力
+                    console.log(`${roadInfo.roadName} ルート詳細:`, {
+                        入口交差点: {
+                            id: entryIntersection.id,
+                            座標: `${entryIntersection.lat.toFixed(6)}, ${entryIntersection.lng.toFixed(6)}`,
+                            タイプ: entryIntersection.type,
+                            接続数: entryIntersection.connectionCount
+                        },
+                        出口交差点: {
+                            id: exitIntersection.id,
+                            座標: `${exitIntersection.lat.toFixed(6)}, ${exitIntersection.lng.toFixed(6)}`,
+                            タイプ: exitIntersection.type,
+                            接続数: exitIntersection.connectionCount
+                        },
+                        道路セグメント数: roadInfo.roadSegments.length,
+                        交差点総数: roadInfo.intersections.length
+                    });
+                    
+                    // 現在位置を更新
+                    currentPosition = exitIntersection;
+                }
+                
+                // 最後の道路から目的地への接続
+                if (currentPosition && calculateDistance(currentPosition, endCoords) > 0.05) {
+                    const connectionGeometry = await getConnectionRoute(currentPosition, endCoords);
+                    if (connectionGeometry) {
+                        completeRoute.push(connectionGeometry);
+                    }
+                }
+                
+                // 全体のルートを結合して表示
+                if (completeRoute.length > 0) {
+                    // すべてのGeometryを一つのMultiLineStringに結合
+                    const allCoordinates = [];
+                    let totalDistance = 0;
+                    
+                    completeRoute.forEach(geometry => {
+                        if (geometry.type === 'LineString' && geometry.coordinates) {
+                            // 各セグメントの距離を計算
+                            for (let i = 0; i < geometry.coordinates.length - 1; i++) {
+                                const p1 = {
+                                    lat: geometry.coordinates[i][1],
+                                    lng: geometry.coordinates[i][0]
+                                };
+                                const p2 = {
+                                    lat: geometry.coordinates[i + 1][1],
+                                    lng: geometry.coordinates[i + 1][0]
+                                };
+                                totalDistance += calculateDistance(p1, p2);
+                            }
+                            
+                            // 座標を追加
+                            geometry.coordinates.forEach(coord => {
+                                allCoordinates.push([coord[1], coord[0]]); // [lat, lng]形式
+                            });
+                        }
+                    });
+                    
+                    // ルートを地図に表示
+                    if (allCoordinates.length > 0) {
+                        routeLayer = L.polyline(allCoordinates, {
+                            color: '#2ecc71',
+                            weight: 6,
+                            opacity: 0.8
+                        }).addTo(map);
+                        
+                        // ルート情報を表示
+                        document.getElementById('routeDistance').textContent = totalDistance.toFixed(1) + ' km';
+                        document.getElementById('routeTime').textContent = Math.round(totalDistance * 3) + ' 分'; // 概算
+                        
+                        // 経由道路リストを表示
+                        const viaRoadsList = document.getElementById('viaRoadsList');
+                        if (viaRoadsList) {
+                            viaRoadsList.innerHTML = selectedIntersections
+                                .map((info, idx) => {
+                                    const samePoint = info.entry.id === info.exit.id;
+                                    return `${idx + 1}. ${info.roadName} ${samePoint ? '(通過)' : '(入口→出口)'}`;
+                                })
+                                .join('<br>');
+                        }
+                        
+                        document.getElementById('routeInfoSection').style.display = 'block';
+                        
+                        // 地図をルート全体にフィット
+                        map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+                        
+                        showStatus(`ルート計算完了: ${totalDistance.toFixed(1)}km（正確な道路追従）`, 'success');
+                    }
+                } else {
+                    throw new Error('ルートの計算に失敗しました');
+                }
+
+            } catch (error) {
+                console.error('ルート計算エラー:', error);
+                alert(`ルート計算エラー: ${error.message}`);
+                showStatus(`ルート計算エラー: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+                document.getElementById('calculateBtn').disabled = false;
+            }
+        }
+
+        // ルートクリア
+        function clearRoute() {
+            console.log('ルートクリア');
+            
+            if (startMarker) map.removeLayer(startMarker);
+            if (endMarker) map.removeLayer(endMarker);
+            if (routeLayer) map.removeLayer(routeLayer);
+            if (viaMarkersLayer) viaMarkersLayer.clearLayers();
+
+            startMarker = null;
+            endMarker = null;
+            routeLayer = null;
+            currentRoute = null;
+
+            document.getElementById('startLocation').value = '';
+            document.getElementById('endLocation').value = '';
+            document.getElementById('viaPoints').innerHTML = '';
+            
+            const routeInfoSection = document.getElementById('routeInfoSection');
+            if (routeInfoSection) {
+                routeInfoSection.style.display = 'none';
+            }
+            
+            viaPointCounter = 0;
+            showStatus('地図をクリアしました', 'info');
+        }
+
+        // 地図を現在地に移動
+        function centerMap() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        map.setView([lat, lng], 13);
+                    },
+                    () => {
+                        map.setView([35.6762, 139.6503], 11); // 東京駅をデフォルト
+                    }
+                );
+            } else {
+                map.setView([35.6762, 139.6503], 11);
+            }
+        }
+
+        // ルート全体を表示
+        function fitRoute() {
+            if (routeLayer) {
+                map.fitBounds(routeLayer.getBounds(), { padding: [20, 20] });
+            } else if (startMarker && endMarker) {
+                const group = new L.featureGroup([startMarker, endMarker]);
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
+            }
+        }
+
+        // 入力補完機能
+        function setupAutocomplete() {
+            const inputs = ['startLocation', 'endLocation'];
+            inputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                        }
+                    });
+                }
+            });
+        }
+
+        // 初期化（自動検索付き）
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM読み込み完了 - 初期化開始');
+            
+            // 基本機能の初期化
+            initMap();
+            setupAutocomplete();
+            
+            // 実用例のデータを設定
+            document.getElementById('startLocation').value = '東京駅';
+            document.getElementById('endLocation').value = '新宿タカシマヤ';
+            
+            // 自動説明を表示
+            showStatus('デモデータをセットアップ中... しばらくお待ちください', 'info');
+            
+            // サンプルの経由道路を追加して自動検索
+            setTimeout(() => {
+                console.log('経由道路1追加');
+                addViaPoint();
+                
+                setTimeout(() => {
+                    const firstInput = document.querySelector('.road-name-input');
+                    if (firstInput) {
+                        console.log('外堀通り検索開始');
+                        firstInput.value = '外堀通り';
+                        searchRoadName(1, '外堀通り');
+                    }
+                }, 100);
+            }, 500);
+            
+            setTimeout(() => {
+                console.log('経由道路2追加');
+                addViaPoint();
+                
+                setTimeout(() => {
+                    const inputs = document.querySelectorAll('.road-name-input');
+                    if (inputs[1]) {
+                        console.log('六本木通り検索開始');
+                        inputs[1].value = '六本木通り';
+                        searchRoadName(2, '六本木通り');
+                    }
+                }, 100);
+            }, 2000);
+            
+            setTimeout(() => {
+                console.log('経由道路3追加');
+                addViaPoint();
+                
+                setTimeout(() => {
+                    const inputs = document.querySelectorAll('.road-name-input');
+                    if (inputs[2]) {
+                        console.log('外苑西通り検索開始');
+                        inputs[2].value = '外苑西通り';
+                        searchRoadName(3, '外苑西通り');
+                    }
+                }, 100);
+            }, 3500);
+            
+            setTimeout(() => {
+                showStatus('デモデータの準備が完了しました。「ルート計算」をクリックすると、指定した道路を正確に追従するルートが計算されます。', 'success');
+            }, 5500);
+            
+            console.log('初期化完了');
+        });
+    </script>
+</body>
+</html>
