@@ -1,0 +1,272 @@
+{
+  "六本木通り": {
+    "name": "六本木通り",
+    "alias": [
+      "都道412号",
+      "霞ヶ関渋谷線"
+    ],
+    "description": "六本木通り（東京都道412号 霞ヶ関渋谷線）",
+    "qualityScore": 98,
+    "segments": [
+      {
+        "name": "霞ヶ関渋谷線（国会前）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+          "Tokyo Metropolitan Route 412",
+          "東京都道412号",
+          "都道412号",
+          "way[ref=\"412\"]",
+          "Kasumigaseki Shibuya Line"
+        ],
+        "lanes": {
+          "upbound": {
+            "coords": [
+              35.67633697349294,
+              139.74926248492886
+            ],
+            "direction": "toward_kasumigaseki",
+            "intersection": "国会前",
+            "geographicalPosition": "north"
+          },
+          "downbound": {
+            "coords": [
+              35.67646116636402,
+              139.74957228007096
+            ],
+            "direction": "toward_shibuya",
+            "intersection": "国会前",
+            "geographicalPosition": "north"
+          }
+        },
+        "priority": 1
+      },
+      {
+        "name": "霞ヶ関渋谷線（外務省上）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+          "Tokyo Metropolitan Route 412",
+          "東京都道412号",
+          "都道412号",
+          "way[ref=\"412\"]"
+        ],
+        "lanes": {
+          "upbound": {
+            "coords": [
+              35.67553730196329,
+              139.7487161547726
+            ],
+            "direction": "toward_kasumigaseki",
+            "intersection": "外務省上",
+            "geographicalPosition": "north"
+          },
+          "downbound": {
+            "coords": [
+              35.67580455678957,
+              139.74917792147176
+            ],
+            "direction": "toward_shibuya",
+            "intersection": "外務省上",
+            "geographicalPosition": "north"
+          }
+        },
+        "priority": 2
+      },
+      {
+        "name": "霞ヶ関渋谷線（財務省上）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+          "Tokyo Metropolitan Route 412",
+          "東京都道412号",
+          "都道412号",
+          "way[ref=\"412\"]"
+        ],
+        "lanes": {
+          "upbound": {
+            "coords": [
+              35.67362855246448,
+              139.74743928837492
+            ],
+            "direction": "toward_kasumigaseki",
+            "intersection": "財務省上",
+            "geographicalPosition": "north"
+          },
+          "downbound": {
+            "coords": [
+              35.6743213078148,
+              139.74823393142435
+            ],
+            "direction": "toward_shibuya",
+            "intersection": "財務省上",
+            "geographicalPosition": "north"
+          }
+        },
+        "priority": 3
+      },
+      {
+        "name": "霞ヶ関渋谷線（内閣府下）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+          "Tokyo Metropolitan Route 412",
+          "東京都道412号"
+        ],
+        "lanes": {
+          "upbound": {
+            "coords": [
+              35.672028966782264,
+              139.74456570070654
+            ],
+            "direction": "toward_kasumigaseki",
+            "intersection": "内閣府下",
+            "geographicalPosition": "middle"
+          },
+          "downbound": {
+            "coords": [
+              35.67191495333736,
+              139.74520842566807
+            ],
+            "direction": "toward_shibuya",
+            "intersection": "内閣府下",
+            "geographicalPosition": "middle"
+          }
+        },
+        "priority": 4
+      },
+      {
+        "name": "霞ヶ関渋谷線（溜池）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+          "Tokyo Metropolitan Route 412",
+          "東京都道412号"
+        ],
+        "lanes": {
+          "upbound": {
+            "coords": [
+              35.670352030912206,
+              139.74206398917008
+            ],
+            "direction": "toward_kasumigaseki",
+            "intersection": "溜池",
+            "geographicalPosition": "middle"
+          },
+          "downbound": {
+            "coords": [
+              35.671348981122634,
+              139.74346977774223
+            ],
+            "direction": "toward_shibuya",
+            "intersection": "溜池",
+            "geographicalPosition": "middle"
+          }
+        },
+        "priority": 5
+      },
+      {
+        "name": "霞ヶ関渋谷線（六本木二丁目）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+          "Tokyo Metropolitan Route 412",
+          "東京都道412号"
+        ],
+        "lanes": {
+          "downbound": {
+            "coords": [
+              35.668220758450545,
+              139.74028159023104
+            ],
+            "direction": "toward_shibuya",
+            "intersection": "六本木二丁目",
+            "geographicalPosition": "middle"
+          }
+        },
+        "priority": 6
+      },
+      {
+        "name": "霞ヶ関渋谷線（六本木なだれ坂）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+          "Tokyo Metropolitan Route 412",
+          "東京都道412号"
+        ],
+        "lanes": {
+          "upbound": {
+            "coords": [
+              35.665256364411434,
+              139.7359804919738
+            ],
+            "direction": "toward_kasumigaseki",
+            "intersection": "六本木なだれ坂",
+            "geographicalPosition": "middle"
+          },
+          "downbound": {
+            "coords": [
+              35.66630551320396,
+              139.73818304395746
+            ],
+            "direction": "toward_shibuya",
+            "intersection": "六本木なだれ坂",
+            "geographicalPosition": "middle"
+          }
+        },
+        "priority": 7
+      },
+      {
+        "name": "霞ヶ関渋谷線（六本木）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+          "Tokyo Metropolitan Route 412",
+          "東京都道412号"
+        ],
+        "lanes": {
+          "upbound": {
+            "coords": [
+              35.66264170167759,
+              139.7307382441423
+            ],
+            "direction": "toward_kasumigaseki",
+            "intersection": "六本木",
+            "geographicalPosition": "middle"
+          },
+          "downbound": {
+            "coords": [
+              35.66471625812508,
+              139.73538518951366
+            ],
+            "direction": "toward_shibuya",
+            "intersection": "六本木",
+            "geographicalPosition": "middle"
+          }
+        },
+        "priority": 8
+      },
+      {
+        "name": "霞ヶ関渋谷線（六本木六丁目）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+          "Tokyo Metropolitan Route 412",
+          "東京都道412号"
+        ],
+        "lanes": {
+          "upbound": {
+            "coords": [
+              35.66038391932924,
+              139.72533534727486
+            ],
+            "direction": "toward_kasumigaseki",
+            "intersection": "六本木六丁目",
+            "geographicalPosition": "middle"
+          },
+          "downbound": {
+            "coords": [
+              35.6616236573804,
+              139.72905662895718
+            ],
+            "direction": "toward_shibuya",
+            "intersection": "六本木六丁目",
+            "geographicalPosition": "middle"
+          }
+        },
+        "priority": 9
+      }
+    ]
+  }
+}
