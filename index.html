@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>統合版：道路入口選択最適化ナビ</title>
+    <title>統合版：道路入口選択最適化ナビ（改良版）</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -532,8 +532,8 @@
     <div class="app-container">
         <div class="control-panel">
             <div class="header">
-                <h1>🗺️ 統合版：道路入口選択最適化ナビ</h1>
-                <p>プリセット道路データ + インテリジェント戦略 + 地点タイプ別最適化</p>
+                <h1>🗺️ 統合版：道路入口選択最適化ナビ（改良版）</h1>
+                <p>中間点設置アルゴリズム + 地理的距離ベース選択 + 詳細デバッグ機能</p>
                 <button class="settings-toggle" onclick="toggleSettings()">⚙️</button>
             </div>
             
@@ -1569,7 +1569,7 @@
             }
         }
 
-        // ルート計算クラス（完全版を維持）
+        // ルート計算クラス（改良版：中間点設置アルゴリズム搭載）
         class RouteCalculator {
             constructor() {
                 this.segments = [];
@@ -1617,7 +1617,7 @@
                                     name: routePoint.finalData.name,
                                     strategy: 'road-segment',
                                     success: true,
-                                    details: `入口・出口最適化完了`
+                                    details: `入口・出口最適化完了${result.intermediatePoints ? ` (中間点${result.intermediatePoints.length}箇所経由)` : ''}`
                                 });
                             }
                         } else if (['facility', 'intersection', 'road'].includes(routePoint.finalData.type)) {
@@ -1729,7 +1729,7 @@
 
             async calculateRoadSegmentRoute(currentPos, roadData, nextPos) {
                 try {
-                    console.log('🚗 道路セグメントルート計算:', roadData.name);
+                    console.log('🚗 改善版道路セグメントルート計算:', roadData.name);
                     
                     const bestSegments = this.findBestSegment(currentPos, roadData.segments, nextPos);
                     
@@ -1747,15 +1747,269 @@
                         console.log('🎯 入口:', `${entryPoint.lat.toFixed(6)}, ${entryPoint.lng.toFixed(6)}`);
                         console.log('🏁 出口:', `${exitPoint.lat.toFixed(6)}, ${exitPoint.lng.toFixed(6)}`);
                         
-                        const result = await this.calculateThreePointRoute(currentPos, entryPoint, exitPoint, nextPos);
+                        // 中間点を生成して道路を確実に通るルートを計算
+                        const intermediatePoints = this.generateIntermediatePoints(
+                            roadData.segments, 
+                            bestSegments.entry, 
+                            bestSegments.exit
+                        );
+                        
+                        console.log(`🛣️ 中間点 ${intermediatePoints.length} 箇所を設定`);
+                        intermediatePoints.forEach((point, index) => {
+                            console.log(`  中間点${index + 1}: ${point.name} (${point.coordinates[0].toFixed(6)}, ${point.coordinates[1].toFixed(6)})`);
+                        });
+                        
+                        const result = await this.calculateMultiPointRoute(
+                            currentPos, 
+                            entryPoint, 
+                            intermediatePoints, 
+                            exitPoint, 
+                            nextPos
+                        );
+                        
                         if (result.success) {
                             result.selectedSegments = bestSegments;
+                            result.intermediatePoints = intermediatePoints;
                             return result;
                         }
                     }
                     
                     throw new Error('適切なセグメントが見つかりません');
                 } catch (error) {
+                    return {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            }
+
+            // 道路の入口と出口の間に中間点を生成するメソッド（改良版）
+            generateIntermediatePoints(segments, entrySegment, exitSegment) {
+                console.log('🛤️ 改良版中間点生成開始');
+                
+                const intermediatePoints = [];
+                const direction = entrySegment.direction;
+                
+                // 入口と出口の座標
+                const entryCoords = entrySegment.coordinates;
+                const exitCoords = exitSegment.coordinates;
+                
+                console.log(`🧭 方向: ${direction}`);
+                console.log(`📍 入口座標: [${entryCoords[0].toFixed(6)}, ${entryCoords[1].toFixed(6)}]`);
+                console.log(`📍 出口座標: [${exitCoords[0].toFixed(6)}, ${exitCoords[1].toFixed(6)}]`);
+                
+                // 入口と出口の間の直線距離を計算
+                const totalDistance = this.calculateDistance(
+                    { lat: entryCoords[0], lng: entryCoords[1] },
+                    { lat: exitCoords[0], lng: exitCoords[1] }
+                );
+                
+                console.log(`📏 入口-出口間距離: ${totalDistance.toFixed(3)}km`);
+                
+                // 距離が短い場合は中間点を設置しない
+                if (totalDistance < 0.5) {
+                    console.log('⚠️ 距離が短いため中間点は設置しません');
+                    return [];
+                }
+                
+                // 全セグメントから同じ方向のセグメントを抽出（入口・出口を除く）
+                const candidateSegments = [];
+                
+                for (const segment of segments) {
+                    // 入口・出口セグメントは除外
+                    if (segment.name === entrySegment.name || segment.name === exitSegment.name) {
+                        console.log(`⏭️ スキップ: ${segment.name} (入口または出口)`);
+                        continue;
+                    }
+                    
+                    for (const [laneType, laneData] of Object.entries(segment.lanes)) {
+                        if (laneData.direction === direction && laneData.coords) {
+                            const segmentCoords = { lat: laneData.coords[0], lng: laneData.coords[1] };
+                            
+                            // 入口からの距離と出口からの距離を計算
+                            const distanceFromEntry = this.calculateDistance(
+                                { lat: entryCoords[0], lng: entryCoords[1] },
+                                segmentCoords
+                            );
+                            
+                            const distanceFromExit = this.calculateDistance(
+                                segmentCoords,
+                                { lat: exitCoords[0], lng: exitCoords[1] }
+                            );
+                            
+                            // 入口と出口の間にあるかを判定（三角不等式を使用）
+                            const isIntermediatePoint = (distanceFromEntry + distanceFromExit) <= (totalDistance * 1.2);
+                            
+                            if (isIntermediatePoint && distanceFromEntry > 0.1 && distanceFromExit > 0.1) {
+                                candidateSegments.push({
+                                    name: `${segment.name} [${laneType}]`,
+                                    coordinates: laneData.coords,
+                                    priority: segment.priority,
+                                    direction: laneData.direction,
+                                    intersection: laneData.intersection,
+                                    segmentType: 'intermediate',
+                                    geographicalPosition: laneData.geographicalPosition,
+                                    distanceFromEntry: distanceFromEntry,
+                                    distanceFromExit: distanceFromExit,
+                                    totalPathDistance: distanceFromEntry + distanceFromExit
+                                });
+                                
+                                console.log(`✅ 候補追加: ${segment.name} [${laneType}]`);
+                                console.log(`  入口から: ${distanceFromEntry.toFixed(3)}km, 出口まで: ${distanceFromExit.toFixed(3)}km`);
+                            } else {
+                                console.log(`❌ 除外: ${segment.name} [${laneType}] (経路外または距離不適切)`);
+                            }
+                            
+                            break; // 同じセグメントから複数のレーンは選ばない
+                        }
+                    }
+                }
+                
+                if (candidateSegments.length === 0) {
+                    console.log('⚠️ 適切な中間点候補が見つかりません');
+                    return [];
+                }
+                
+                // 入口からの距離順にソート（方向に関係なく地理的順序で）
+                candidateSegments.sort((a, b) => a.distanceFromEntry - b.distanceFromEntry);
+                
+                console.log('📊 候補セグメント（入口からの距離順）:');
+                candidateSegments.forEach((seg, index) => {
+                    console.log(`  ${index + 1}. ${seg.name} - 入口から${seg.distanceFromEntry.toFixed(3)}km`);
+                });
+                
+                // 中間点数を決定（総距離に応じて調整）
+                let targetIntermediateCount;
+                if (totalDistance < 1.0) {
+                    targetIntermediateCount = 1;
+                } else if (totalDistance < 2.0) {
+                    targetIntermediateCount = 2;
+                } else if (totalDistance < 4.0) {
+                    targetIntermediateCount = 3;
+                } else {
+                    targetIntermediateCount = 4;
+                }
+                
+                // 利用可能な候補数に制限
+                targetIntermediateCount = Math.min(targetIntermediateCount, candidateSegments.length);
+                
+                console.log(`🎯 設定する中間点数: ${targetIntermediateCount} (候補${candidateSegments.length}から選択)`);
+                
+                // 等間隔で中間点を選択
+                if (targetIntermediateCount === 1) {
+                    // 1つの場合は最も中央に近いものを選択
+                    const midDistance = totalDistance / 2;
+                    let bestCandidate = candidateSegments[0];
+                    let minDifference = Math.abs(bestCandidate.distanceFromEntry - midDistance);
+                    
+                    for (const candidate of candidateSegments) {
+                        const difference = Math.abs(candidate.distanceFromEntry - midDistance);
+                        if (difference < minDifference) {
+                            minDifference = difference;
+                            bestCandidate = candidate;
+                        }
+                    }
+                    
+                    intermediatePoints.push(bestCandidate);
+                } else {
+                    // 複数の場合は等間隔で分散
+                    const step = Math.floor(candidateSegments.length / targetIntermediateCount);
+                    for (let i = 0; i < targetIntermediateCount; i++) {
+                        const index = Math.min(i * step, candidateSegments.length - 1);
+                        intermediatePoints.push(candidateSegments[index]);
+                    }
+                }
+                
+                console.log(`🎯 最終選択された中間点:`);
+                intermediatePoints.forEach((point, index) => {
+                    console.log(`  ${index + 1}. ${point.name} - 入口から${point.distanceFromEntry.toFixed(3)}km`);
+                });
+                
+                return intermediatePoints;
+            }
+
+            // 複数点を経由するルート計算メソッド
+            async calculateMultiPointRoute(currentPos, entryPoint, intermediatePoints, exitPoint, nextPos) {
+                try {
+                    console.log('\n🔗 改良版：複数点経由ルート計算開始');
+                    console.log(`📍 経由ポイント構成:`);
+                    console.log(`  現在位置: [${currentPos.lat.toFixed(6)}, ${currentPos.lng.toFixed(6)}]`);
+                    console.log(`  入口: [${entryPoint.lat.toFixed(6)}, ${entryPoint.lng.toFixed(6)}]`);
+                    intermediatePoints.forEach((point, index) => {
+                        console.log(`  中間点${index + 1}: [${point.coordinates[0].toFixed(6)}, ${point.coordinates[1].toFixed(6)}] (${point.name})`);
+                    });
+                    console.log(`  出口: [${exitPoint.lat.toFixed(6)}, ${exitPoint.lng.toFixed(6)}]`);
+                    console.log(`  次の目的地: [${nextPos.lat.toFixed(6)}, ${nextPos.lng.toFixed(6)}]`);
+                    
+                    const allSegments = [];
+                    let totalDistance = 0;
+                    let totalDuration = 0;
+                    let currentPosition = currentPos;
+                    
+                    // 現在位置 → 入口
+                    console.log('\n📍 セグメント1: 現在位置 → 入口');
+                    const segment1 = await this.calculateSegment(currentPosition, entryPoint);
+                    if (!segment1) throw new Error('入口への経路計算に失敗');
+                    
+                    console.log(`  ✅ 距離: ${segment1.distance.toFixed(3)}km, 時間: ${Math.round(segment1.duration)}分`);
+                    allSegments.push(segment1);
+                    totalDistance += segment1.distance;
+                    totalDuration += segment1.duration;
+                    currentPosition = entryPoint;
+                    
+                    // 入口 → 各中間点
+                    for (let i = 0; i < intermediatePoints.length; i++) {
+                        const intermediateCoords = {
+                            lat: intermediatePoints[i].coordinates[0],
+                            lng: intermediatePoints[i].coordinates[1]
+                        };
+                        
+                        console.log(`\n📍 セグメント${i + 2}: ${i === 0 ? '入口' : `中間点${i}`} → 中間点${i + 1} (${intermediatePoints[i].name})`);
+                        const segment = await this.calculateSegment(currentPosition, intermediateCoords);
+                        if (!segment) throw new Error(`中間点${i + 1}への経路計算に失敗`);
+                        
+                        console.log(`  ✅ 距離: ${segment.distance.toFixed(3)}km, 時間: ${Math.round(segment.duration)}分`);
+                        allSegments.push(segment);
+                        totalDistance += segment.distance;
+                        totalDuration += segment.duration;
+                        currentPosition = intermediateCoords;
+                    }
+                    
+                    // 最後の中間点（または入口） → 出口
+                    console.log(`\n📍 セグメント${intermediatePoints.length + 2}: ${intermediatePoints.length > 0 ? `中間点${intermediatePoints.length}` : '入口'} → 出口`);
+                    const segmentToExit = await this.calculateSegment(currentPosition, exitPoint);
+                    if (!segmentToExit) throw new Error('出口への経路計算に失敗');
+                    
+                    console.log(`  ✅ 距離: ${segmentToExit.distance.toFixed(3)}km, 時間: ${Math.round(segmentToExit.duration)}分`);
+                    allSegments.push(segmentToExit);
+                    totalDistance += segmentToExit.distance;
+                    totalDuration += segmentToExit.duration;
+                    
+                    // 出口 → 次の目的地
+                    console.log(`\n📍 セグメント${intermediatePoints.length + 3}: 出口 → 次の目的地`);
+                    const finalSegment = await this.calculateSegment(exitPoint, nextPos);
+                    if (!finalSegment) throw new Error('次の目的地への経路計算に失敗');
+                    
+                    console.log(`  ✅ 距離: ${finalSegment.distance.toFixed(3)}km, 時間: ${Math.round(finalSegment.duration)}分`);
+                    allSegments.push(finalSegment);
+                    totalDistance += finalSegment.distance;
+                    totalDuration += finalSegment.duration;
+                    
+                    console.log('\n🎯 複数点経由ルート計算完了');
+                    console.log(`  ✅ 総セグメント数: ${allSegments.length}`);
+                    console.log(`  ✅ 総距離: ${totalDistance.toFixed(2)}km`);
+                    console.log(`  ✅ 総時間: ${Math.round(totalDuration)}分`);
+                    console.log(`  ✅ 中間点経由数: ${intermediatePoints.length}箇所`);
+                    
+                    return {
+                        success: true,
+                        segments: allSegments,
+                        totalDistance: totalDistance,
+                        totalDuration: totalDuration,
+                        exitPoint: nextPos
+                    };
+                } catch (error) {
+                    console.error('❌ 複数点経由ルート計算エラー:', error);
                     return {
                         success: false,
                         error: error.message
@@ -1796,7 +2050,9 @@
             }
 
             findBestSegment(currentPos, segments, nextPos) {
-                console.log('🎯 方向一貫性を考慮した入口・出口選択開始');
+                console.log('🎯 改良版：方向一貫性を考慮した入口・出口選択開始');
+                console.log(`📍 現在位置: [${currentPos.lat.toFixed(6)}, ${currentPos.lng.toFixed(6)}]`);
+                console.log(`📍 次の目的地: [${nextPos.lat.toFixed(6)}, ${nextPos.lng.toFixed(6)}]`);
                 
                 let bestEntry = null;
                 let bestExit = null;
@@ -1804,6 +2060,21 @@
                 let bestExitScore = -Infinity;
                 let selectedDirection = null;
                 
+                // 全候補をログ出力
+                console.log('🔍 利用可能なセグメント:');
+                segments.forEach((segment, index) => {
+                    console.log(`  ${index + 1}. ${segment.name} (優先度: ${segment.priority})`);
+                    if (segment.lanes) {
+                        Object.entries(segment.lanes).forEach(([laneType, laneData]) => {
+                            if (laneData.coords) {
+                                console.log(`    - ${laneType}: [${laneData.coords[0].toFixed(6)}, ${laneData.coords[1].toFixed(6)}] (${laneData.direction})`);
+                            }
+                        });
+                    }
+                });
+                
+                // 入口候補の評価
+                console.log('\n🚪 入口候補の評価:');
                 for (const segment of segments) {
                     if (!segment.lanes) continue;
                     
@@ -1816,9 +2087,10 @@
                         };
 
                         const distanceFromCurrent = this.calculateDistance(currentPos, segmentPoint);
-                        const entryScore = 1 / Math.max(distanceFromCurrent, 0.1);
+                        const entryScore = 1 / Math.max(distanceFromCurrent, 0.01); // より細かい計算
                         
-                        console.log(`📊 入口候補 ${segment.name} [${laneType}] (${laneData.direction}): ${entryScore.toFixed(3)}`);
+                        console.log(`  ${segment.name} [${laneType}] (${laneData.direction}):`);
+                        console.log(`    距離: ${distanceFromCurrent.toFixed(3)}km, スコア: ${entryScore.toFixed(3)}`);
                         
                         if (entryScore > bestEntryScore) {
                             bestEntryScore = entryScore;
@@ -1831,12 +2103,16 @@
                                 intersection: laneData.intersection,
                                 segmentType: 'entry'
                             };
+                            console.log(`    ✅ 新しい最良入口候補`);
                         }
                     }
                 }
                 
-                console.log(`🧭 選択された方向: ${selectedDirection}`);
+                console.log(`\n🧭 選択された方向: ${selectedDirection}`);
+                console.log(`🏆 最良入口: ${bestEntry?.name} [${bestEntry?.selectedLane?.type}]`);
                 
+                // 出口候補の評価（同じ方向のみ）
+                console.log('\n🚪 出口候補の評価 (同じ方向のみ):');
                 for (const segment of segments) {
                     if (!segment.lanes) continue;
                     
@@ -1844,7 +2120,7 @@
                         if (!laneData.coords) continue;
                         
                         if (laneData.direction !== selectedDirection) {
-                            console.log(`❌ 方向不一致でスキップ: ${segment.name} [${laneType}] (${laneData.direction} ≠ ${selectedDirection})`);
+                            console.log(`  ⏭️ スキップ: ${segment.name} [${laneType}] (方向不一致: ${laneData.direction} ≠ ${selectedDirection})`);
                             continue;
                         }
                         
@@ -1854,9 +2130,10 @@
                         };
 
                         const distanceToNext = this.calculateDistance(segmentPoint, nextPos);
-                        const exitScore = 1 / Math.max(distanceToNext, 0.1);
+                        const exitScore = 1 / Math.max(distanceToNext, 0.01);
                         
-                        console.log(`📊 出口候補 ${segment.name} [${laneType}] (${laneData.direction}): ${exitScore.toFixed(3)}`);
+                        console.log(`  ${segment.name} [${laneType}] (${laneData.direction}):`);
+                        console.log(`    距離: ${distanceToNext.toFixed(3)}km, スコア: ${exitScore.toFixed(3)}`);
                         
                         if (exitScore > bestExitScore) {
                             bestExitScore = exitScore;
@@ -1868,13 +2145,20 @@
                                 intersection: laneData.intersection,
                                 segmentType: 'exit'
                             };
+                            console.log(`    ✅ 新しい最良出口候補`);
                         }
                     }
                 }
                 
                 if (bestEntry && bestExit) {
+                    console.log(`\n🎯 最終結果:`);
                     console.log(`🏆 入口選択: ${bestEntry.name} [${bestEntry.selectedLane.type}] (${bestEntry.direction})`);
                     console.log(`🏁 出口選択: ${bestExit.name} [${bestExit.selectedLane.type}] (${bestExit.direction})`);
+                    
+                    // 入口と出口が同じセグメントかチェック
+                    if (bestEntry.name === bestExit.name) {
+                        console.log(`⚠️ 警告: 入口と出口が同じセグメント (${bestEntry.name})`);
+                    }
                     
                     if (bestEntry.direction === bestExit.direction) {
                         console.log(`✅ 方向一貫性確認: ${bestEntry.direction}`);
@@ -1885,6 +2169,8 @@
                     } else {
                         console.error(`❌ 方向不一致エラー: 入口(${bestEntry.direction}) ≠ 出口(${bestExit.direction})`);
                     }
+                } else {
+                    console.error(`❌ 入口または出口が見つかりません: 入口=${!!bestEntry}, 出口=${!!bestExit}`);
                 }
                 
                 console.warn('⚠️ 適切な入口・出口の組み合わせが見つかりません');
@@ -2169,62 +2455,133 @@
         function displaySelectedSegment(selectedSegments) {
             clearRoadSegmentMarkers();
             
-            console.log('🗺️ 入口・出口セグメント表示開始');
+            console.log('🗺️ 改良版：入口・出口・中間点セグメント表示開始');
+            console.log('🔍 表示するセグメント情報:', selectedSegments);
             
+            // 入口マーカー表示
             if (selectedSegments.entry) {
                 const entryLaneData = selectedSegments.entry.selectedLane.data;
                 const entryLat = entryLaneData.coords[0];
                 const entryLng = entryLaneData.coords[1];
                 
                 try {
-                    const entryMarker = L.marker([entryLat, entryLng], { icon: icons.roadEntry })
+                    // 入口マーカーを緑色で大きく表示
+                    const entryIcon = L.divIcon({
+                        html: '<div style="background: #27ae60; color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 14px;">IN</div>',
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    });
+                    
+                    const entryMarker = L.marker([entryLat, entryLng], { icon: entryIcon })
                         .bindPopup(`
                             <div>
                                 <strong>🚪 道路入口</strong><br>
                                 🛣️ ${selectedSegments.entry.name}<br>
                                 🚗 ${selectedSegments.entry.selectedLane.type}<br>
                                 🧭 ${entryLaneData.direction}<br>
-                                📍 ${entryLaneData.intersection}
+                                📍 ${entryLaneData.intersection}<br>
+                                📊 優先度: ${selectedSegments.entry.priority}
                             </div>
                         `)
                         .addTo(map);
                     
                     roadSegmentLayers.push(entryMarker);
-                    console.log('🚪 入口マーカー表示完了');
+                    console.log(`🚪 入口マーカー表示完了: ${selectedSegments.entry.name} [${entryLat.toFixed(6)}, ${entryLng.toFixed(6)}]`);
                 } catch (error) {
                     console.error('入口マーカー表示エラー:', error);
                 }
             }
             
+            // 中間点マーカー表示（詳細情報付き）
+            if (selectedSegments.intermediatePoints && selectedSegments.intermediatePoints.length > 0) {
+                console.log(`🛤️ 中間点 ${selectedSegments.intermediatePoints.length} 箇所を表示`);
+                
+                selectedSegments.intermediatePoints.forEach((point, index) => {
+                    try {
+                        // 中間点マーカーをオレンジ色で番号付きで表示
+                        const intermediateIcon = L.divIcon({
+                            html: `<div style="background: #f39c12; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #fff; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">${index + 1}</div>`,
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 12]
+                        });
+                        
+                        const intermediateMarker = L.marker([point.coordinates[0], point.coordinates[1]], { icon: intermediateIcon })
+                            .bindPopup(`
+                                <div>
+                                    <strong>🛤️ 中間点 ${index + 1}</strong><br>
+                                    🛣️ ${point.name}<br>
+                                    🧭 ${point.direction}<br>
+                                    📍 ${point.intersection}<br>
+                                    📊 優先度: ${point.priority}<br>
+                                    📏 入口から: ${point.distanceFromEntry ? point.distanceFromEntry.toFixed(3) + 'km' : '未計算'}<br>
+                                    📏 出口まで: ${point.distanceFromExit ? point.distanceFromExit.toFixed(3) + 'km' : '未計算'}
+                                </div>
+                            `)
+                            .addTo(map);
+                        
+                        roadSegmentLayers.push(intermediateMarker);
+                        console.log(`🛤️ 中間点${index + 1}マーカー表示完了: ${point.name} [${point.coordinates[0].toFixed(6)}, ${point.coordinates[1].toFixed(6)}]`);
+                    } catch (error) {
+                        console.error(`中間点${index + 1}マーカー表示エラー:`, error);
+                    }
+                });
+            } else {
+                console.log('ℹ️ 中間点は設定されていません');
+            }
+            
+            // 出口マーカー表示
             if (selectedSegments.exit) {
                 const exitLaneData = selectedSegments.exit.selectedLane.data;
                 const exitLat = exitLaneData.coords[0];
                 const exitLng = exitLaneData.coords[1];
                 
                 try {
-                    const exitMarker = L.marker([exitLat, exitLng], { icon: icons.roadExit })
+                    // 出口マーカーを赤色で大きく表示
+                    const exitIcon = L.divIcon({
+                        html: '<div style="background: #e74c3c; color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 12px;">OUT</div>',
+                        iconSize: [28, 28],
+                        iconAnchor: [14, 14]
+                    });
+                    
+                    const exitMarker = L.marker([exitLat, exitLng], { icon: exitIcon })
                         .bindPopup(`
                             <div>
                                 <strong>🚪 道路出口</strong><br>
                                 🛣️ ${selectedSegments.exit.name}<br>
                                 🚗 ${selectedSegments.exit.selectedLane.type}<br>
                                 🧭 ${exitLaneData.direction}<br>
-                                📍 ${exitLaneData.intersection}
+                                📍 ${exitLaneData.intersection}<br>
+                                📊 優先度: ${selectedSegments.exit.priority}
                             </div>
                         `)
                         .addTo(map);
                     
                     roadSegmentLayers.push(exitMarker);
-                    console.log('🚪 出口マーカー表示完了');
+                    console.log(`🚪 出口マーカー表示完了: ${selectedSegments.exit.name} [${exitLat.toFixed(6)}, ${exitLng.toFixed(6)}]`);
                 } catch (error) {
                     console.error('出口マーカー表示エラー:', error);
                 }
             }
             
+            // 地図表示の調整
             if (roadSegmentLayers.length > 0) {
                 const group = new L.featureGroup(roadSegmentLayers);
                 map.fitBounds(group.getBounds(), { padding: [50, 50] });
-                console.log('🗺️ 入口・出口表示完了');
+                
+                const intermediateCount = selectedSegments.intermediatePoints?.length || 0;
+                console.log(`🗺️ 道路セグメント表示完了 (入口・出口・中間点${intermediateCount}箇所)`);
+                
+                // デバッグ用：選択された全ポイントの座標をログ出力
+                console.log('📍 選択されたポイント座標一覧:');
+                if (selectedSegments.entry) {
+                    console.log(`  入口: [${selectedSegments.entry.coordinates[0].toFixed(6)}, ${selectedSegments.entry.coordinates[1].toFixed(6)}]`);
+                }
+                selectedSegments.intermediatePoints?.forEach((point, index) => {
+                    console.log(`  中間点${index + 1}: [${point.coordinates[0].toFixed(6)}, ${point.coordinates[1].toFixed(6)}]`);
+                });
+                if (selectedSegments.exit) {
+                    console.log(`  出口: [${selectedSegments.exit.coordinates[0].toFixed(6)}, ${selectedSegments.exit.coordinates[1].toFixed(6)}]`);
+                }
             }
         }
 
@@ -2834,7 +3191,7 @@
 
         // 初期化処理
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('統合版ナビアプリ初期化開始');
+            console.log('統合版ナビアプリ（改良版）初期化開始');
             
             try {
                 initMap();
@@ -2848,7 +3205,7 @@
                 
                 setTimeout(() => {
                     const roadCount = Object.keys(PRESET_ROADS).length;
-                    showStatus(`統合版ナビアプリ準備完了！プリセット道路（${roadCount}道路）をクリックして経由道路を追加してください。設定パネルで料金・表示設定をカスタマイズできます。`, 'success');
+                    showStatus(`統合版ナビアプリ（改良版）準備完了！中間点設置アルゴリズムで指定道路を確実に経由します。プリセット道路（${roadCount}道路）をクリックして経由道路を追加してください。`, 'success');
                 }, 1500);
                 
             } catch (error) {
