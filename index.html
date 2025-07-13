@@ -539,7 +539,7 @@
         <div class="control-panel">
             <div class="header">
                 <h1>🗺️ デモ版：タクシー運転手用ナビ</h1>
-                <p>分割セグメント戦略 + 中間点設置アルゴリズム + 地理的距離ベース選択</p>
+                <p>〇〇通りを通って△△まで、復唱するように入力する※正確な道路データは、整備中</p>
                 <button class="settings-toggle" onclick="toggleSettings()">⚙️</button>
             </div>
             
@@ -608,9 +608,9 @@
                 </div>
                 
                 <div class="location-input">
-                    <label>目的地</label>
+                    <label>目的地または道路名</label>
                     <div class="input-group">
-                        <input type="text" id="endLocation" value="伊勢丹新宿" placeholder="住所または地名を入力">
+                        <input type="text" id="endLocation" value="伊勢丹新宿" placeholder="住所、地名または道路名を入力">
                         <button class="btn-icon" onclick="getCurrentLocation('end')">📍</button>
                     </div>
                 </div>
@@ -639,7 +639,7 @@
                 <button class="btn-secondary" onclick="addRoutePoint()">➕ 経由道路を追加</button>
                 
                 <button class="btn-primary" onclick="calculateOptimizedRoute()" id="calculateBtn">
-                    🚀 道路入口最適化ルート計算
+                    🚀 ルート計算
                 </button>
                 
                 <button class="btn-secondary" onclick="clearRoute()">🗑️ クリア</button>
