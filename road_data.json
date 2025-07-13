@@ -266,7 +266,145 @@
           }
         },
         "priority": 9
-      }
-    ]
-  }
+      },
+      {
+        "name": "霞ヶ関渋谷線（西麻布）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+            "Tokyo Metropolitan Route 412",
+            "東京都道412号"
+        ],
+        "lanes": {
+            "upbound": {
+                "coords": [35.659748770586226, 139.72273842920146],
+                "direction": "toward_kasumigaseki",
+                "intersection": "西麻布",
+                "geographicalPosition": "south"
+            },
+            "downbound": {
+                "coords": [35.66028595561076, 139.7257074163816],
+                "direction": "toward_shibuya",
+                "intersection": "西麻布",
+                "geographicalPosition": "south"
+            }
+        },
+        "priority": 10
+    },
+    {
+        "name": "霞ヶ関渋谷線（高樹町）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+            "Tokyo Metropolitan Route 412",
+            "東京都道412号"
+        ],
+        "lanes": {
+            "upbound": {
+                "coords": [35.659377903552155, 139.71790778690584],
+                "direction": "toward_kasumigaseki",
+                "intersection": "高樹町",
+                "geographicalPosition": "south"
+            },
+            "downbound": {
+                "coords": [35.65933283789171, 139.71974743473592],
+                "direction": "toward_shibuya",
+                "intersection": "高樹町",
+                "geographicalPosition": "south"
+            }
+        },
+        "priority": 11
+    },
+    {
+        "name": "霞ヶ関渋谷線（南青山七丁目）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+            "Tokyo Metropolitan Route 412",
+            "東京都道412号"
+        ],
+        "lanes": {
+            "upbound": {
+                "coords": [35.659017390204085, 139.71417714896194],
+                "direction": "toward_kasumigaseki",
+                "intersection": "南青山七丁目",
+                "geographicalPosition": "south"
+            },
+            "downbound": {
+                "coords": [35.65904187503687, 139.71647979108218],
+                "direction": "toward_shibuya",
+                "intersection": "南青山七丁目",
+                "geographicalPosition": "south"
+            }
+        },
+        "priority": 12
+    },
+    {
+        "name": "霞ヶ関渋谷線（渋谷四丁目）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+            "Tokyo Metropolitan Route 412",
+            "東京都道412号"
+        ],
+        "lanes": {
+            "upbound": {
+                "coords": [35.65879977328417, 139.71155327257927],
+                "direction": "toward_kasumigaseki",
+                "intersection": "渋谷四丁目",
+                "geographicalPosition": "south"
+            },
+            "downbound": {
+                "coords": [35.658766220053806, 139.71359471295025],
+                "direction": "toward_shibuya",
+                "intersection": "渋谷四丁目",
+                "geographicalPosition": "south"
+            }
+        },
+        "priority": 13
+    },
+    {
+        "name": "霞ヶ関渋谷線（渋谷二丁目）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+            "Tokyo Metropolitan Route 412",
+            "東京都道412号"
+        ],
+        "lanes": {
+            "upbound": {
+                "coords": [35.65846528776293, 139.7076645134276],
+                "direction": "toward_kasumigaseki",
+                "intersection": "渋谷二丁目",
+                "geographicalPosition": "south"
+            },
+            "downbound": {
+                "coords": [35.65837367241692, 139.70966117651562],
+                "direction": "toward_shibuya",
+                "intersection": "渋谷二丁目",
+                "geographicalPosition": "south"
+            }
+        },
+        "priority": 14
+    },
+    {
+        "name": "霞ヶ関渋谷線（渋谷署前）",
+        "osmQuery": "霞ヶ関渋谷線",
+        "alternativeQueries": [
+            "Tokyo Metropolitan Route 412",
+            "東京都道412号"
+        ],
+        "lanes": {
+            "upbound": {
+                "coords": [35.65839431514949, 139.7055161950597],
+                "direction": "toward_kasumigaseki",
+                "intersection": "渋谷署前",
+                "geographicalPosition": "south"
+            },
+            "downbound": {
+                "coords": [35.65807324549776, 139.70477169140216],
+                "direction": "toward_shibuya",
+                "intersection": "渋谷署前",
+                "geographicalPosition": "south"
+            }
+        },
+        "priority": 15
+        }
+        ]
+    }
 }
