@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>統合版：道路入口選択最適化ナビ（改良版）</title>
+    <title>統合版：道路入口選択最適化ナビ（分割戦略版）</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -532,8 +532,8 @@
     <div class="app-container">
         <div class="control-panel">
             <div class="header">
-                <h1>🗺️ 統合版：道路入口選択最適化ナビ（改良版）</h1>
-                <p>中間点設置アルゴリズム + 地理的距離ベース選択 + 詳細デバッグ機能</p>
+                <h1>🗺️ 統合版：道路入口選択最適化ナビ（分割戦略版）</h1>
+                <p>分割セグメント戦略 + 中間点設置アルゴリズム + 地理的距離ベース選択</p>
                 <button class="settings-toggle" onclick="toggleSettings()">⚙️</button>
             </div>
             
@@ -1569,7 +1569,7 @@
             }
         }
 
-        // ルート計算クラス（改良版：中間点設置アルゴリズム搭載）
+        // ルート計算クラス（分割戦略版：隣接セグメント個別計算）
         class RouteCalculator {
             constructor() {
                 this.segments = [];
@@ -1610,6 +1610,7 @@
                                 currentPos = result.exitPoint;
                                 
                                 if (result.selectedSegments && showSegmentDetails) {
+                                    console.log('🗺️ 表示用セグメント情報:', result.selectedSegments);
                                     displaySelectedSegment(result.selectedSegments);
                                 }
                                 
@@ -1617,7 +1618,7 @@
                                     name: routePoint.finalData.name,
                                     strategy: 'road-segment',
                                     success: true,
-                                    details: `入口・出口最適化完了${result.intermediatePoints ? ` (中間点${result.intermediatePoints.length}箇所経由)` : ''}`
+                                    details: `分割戦略完了${result.intermediatePoints ? ` (中間点${result.intermediatePoints.length}箇所経由, ${result.segmentCount || 'N/A'}セグメント分割)` : ''}`
                                 });
                             }
                         } else if (['facility', 'intersection', 'road'].includes(routePoint.finalData.type)) {
@@ -1729,7 +1730,7 @@
 
             async calculateRoadSegmentRoute(currentPos, roadData, nextPos) {
                 try {
-                    console.log('🚗 改善版道路セグメントルート計算:', roadData.name);
+                                            console.log('🚗 分割戦略版道路セグメントルート計算:', roadData.name);
                     
                     const bestSegments = this.findBestSegment(currentPos, roadData.segments, nextPos);
                     
@@ -1768,8 +1769,19 @@
                         );
                         
                         if (result.success) {
-                            result.selectedSegments = bestSegments;
-                            result.intermediatePoints = intermediatePoints;
+                            // 中間点情報を確実に含める
+                            result.selectedSegments = {
+                                entry: bestSegments.entry,
+                                exit: bestSegments.exit,
+                                intermediatePoints: intermediatePoints  // 中間点情報を確実に渡す
+                            };
+                            
+                            // デバッグ用：設定された情報を確認
+                            console.log('✅ selectedSegments設定完了:');
+                            console.log('  entry:', result.selectedSegments.entry?.name);
+                            console.log('  exit:', result.selectedSegments.exit?.name);
+                            console.log('  intermediatePoints count:', result.selectedSegments.intermediatePoints?.length || 0);
+                            
                             return result;
                         }
                     }
@@ -1928,10 +1940,10 @@
                 return intermediatePoints;
             }
 
-            // 複数点を経由するルート計算メソッド
+            // 複数点を経由するルート計算メソッド（分割戦略版）
             async calculateMultiPointRoute(currentPos, entryPoint, intermediatePoints, exitPoint, nextPos) {
                 try {
-                    console.log('\n🔗 改良版：複数点経由ルート計算開始');
+                    console.log('\n🔗 分割戦略版：複数点経由ルート計算開始');
                     console.log(`📍 経由ポイント構成:`);
                     console.log(`  現在位置: [${currentPos.lat.toFixed(6)}, ${currentPos.lng.toFixed(6)}]`);
                     console.log(`  入口: [${entryPoint.lat.toFixed(6)}, ${entryPoint.lng.toFixed(6)}]`);
@@ -1944,72 +1956,113 @@
                     const allSegments = [];
                     let totalDistance = 0;
                     let totalDuration = 0;
-                    let currentPosition = currentPos;
                     
-                    // 現在位置 → 入口
-                    console.log('\n📍 セグメント1: 現在位置 → 入口');
-                    const segment1 = await this.calculateSegment(currentPosition, entryPoint);
-                    if (!segment1) throw new Error('入口への経路計算に失敗');
+                    // 戦略：個別のルート計算を実行
+                    const routeCalculations = [];
                     
-                    console.log(`  ✅ 距離: ${segment1.distance.toFixed(3)}km, 時間: ${Math.round(segment1.duration)}分`);
-                    allSegments.push(segment1);
-                    totalDistance += segment1.distance;
-                    totalDuration += segment1.duration;
-                    currentPosition = entryPoint;
+                    // 1. 現在位置 → 入口
+                    routeCalculations.push({
+                        name: '現在位置 → 入口',
+                        from: currentPos,
+                        to: entryPoint
+                    });
                     
-                    // 入口 → 各中間点
-                    for (let i = 0; i < intermediatePoints.length; i++) {
-                        const intermediateCoords = {
-                            lat: intermediatePoints[i].coordinates[0],
-                            lng: intermediatePoints[i].coordinates[1]
-                        };
+                    // 2. 入口 → 中間点1（短距離で確実）
+                    if (intermediatePoints.length > 0) {
+                        routeCalculations.push({
+                            name: '入口 → 中間点1',
+                            from: entryPoint,
+                            to: {
+                                lat: intermediatePoints[0].coordinates[0],
+                                lng: intermediatePoints[0].coordinates[1]
+                            }
+                        });
+                    }
+                    
+                    // 3. 中間点間の個別ルート（隣接セグメント同士）
+                    for (let i = 0; i < intermediatePoints.length - 1; i++) {
+                        routeCalculations.push({
+                            name: `中間点${i + 1} → 中間点${i + 2}`,
+                            from: {
+                                lat: intermediatePoints[i].coordinates[0],
+                                lng: intermediatePoints[i].coordinates[1]
+                            },
+                            to: {
+                                lat: intermediatePoints[i + 1].coordinates[0],
+                                lng: intermediatePoints[i + 1].coordinates[1]
+                            }
+                        });
+                    }
+                    
+                    // 4. 最後の中間点 → 出口
+                    if (intermediatePoints.length > 0) {
+                        routeCalculations.push({
+                            name: `中間点${intermediatePoints.length} → 出口`,
+                            from: {
+                                lat: intermediatePoints[intermediatePoints.length - 1].coordinates[0],
+                                lng: intermediatePoints[intermediatePoints.length - 1].coordinates[1]
+                            },
+                            to: exitPoint
+                        });
+                    } else {
+                        // 中間点がない場合：入口 → 出口
+                        routeCalculations.push({
+                            name: '入口 → 出口',
+                            from: entryPoint,
+                            to: exitPoint
+                        });
+                    }
+                    
+                    // 5. 出口 → 最終目的地
+                    routeCalculations.push({
+                        name: '出口 → 最終目的地',
+                        from: exitPoint,
+                        to: nextPos
+                    });
+                    
+                    console.log(`\n📋 分割ルート計算計画 (${routeCalculations.length}セグメント):`);
+                    routeCalculations.forEach((calc, index) => {
+                        console.log(`  セグメント${index + 1}: ${calc.name}`);
+                    });
+                    
+                    // 各セグメントを個別計算
+                    for (let i = 0; i < routeCalculations.length; i++) {
+                        const calc = routeCalculations[i];
+                        console.log(`\n📍 セグメント${i + 1}: ${calc.name}`);
+                        console.log(`  从: [${calc.from.lat.toFixed(6)}, ${calc.from.lng.toFixed(6)}]`);
+                        console.log(`  到: [${calc.to.lat.toFixed(6)}, ${calc.to.lng.toFixed(6)}]`);
                         
-                        console.log(`\n📍 セグメント${i + 2}: ${i === 0 ? '入口' : `中間点${i}`} → 中間点${i + 1} (${intermediatePoints[i].name})`);
-                        const segment = await this.calculateSegment(currentPosition, intermediateCoords);
-                        if (!segment) throw new Error(`中間点${i + 1}への経路計算に失敗`);
+                        const segment = await this.calculateSegment(calc.from, calc.to);
+                        if (!segment) {
+                            console.error(`❌ セグメント${i + 1}の計算に失敗: ${calc.name}`);
+                            throw new Error(`セグメント${i + 1}(${calc.name})の経路計算に失敗`);
+                        }
                         
-                        console.log(`  ✅ 距離: ${segment.distance.toFixed(3)}km, 時間: ${Math.round(segment.duration)}分`);
+                        console.log(`  ✅ 成功: ${segment.distance.toFixed(3)}km, ${Math.round(segment.duration)}分 (${segment.engine})`);
+                        
                         allSegments.push(segment);
                         totalDistance += segment.distance;
                         totalDuration += segment.duration;
-                        currentPosition = intermediateCoords;
                     }
                     
-                    // 最後の中間点（または入口） → 出口
-                    console.log(`\n📍 セグメント${intermediatePoints.length + 2}: ${intermediatePoints.length > 0 ? `中間点${intermediatePoints.length}` : '入口'} → 出口`);
-                    const segmentToExit = await this.calculateSegment(currentPosition, exitPoint);
-                    if (!segmentToExit) throw new Error('出口への経路計算に失敗');
-                    
-                    console.log(`  ✅ 距離: ${segmentToExit.distance.toFixed(3)}km, 時間: ${Math.round(segmentToExit.duration)}分`);
-                    allSegments.push(segmentToExit);
-                    totalDistance += segmentToExit.distance;
-                    totalDuration += segmentToExit.duration;
-                    
-                    // 出口 → 次の目的地
-                    console.log(`\n📍 セグメント${intermediatePoints.length + 3}: 出口 → 次の目的地`);
-                    const finalSegment = await this.calculateSegment(exitPoint, nextPos);
-                    if (!finalSegment) throw new Error('次の目的地への経路計算に失敗');
-                    
-                    console.log(`  ✅ 距離: ${finalSegment.distance.toFixed(3)}km, 時間: ${Math.round(finalSegment.duration)}分`);
-                    allSegments.push(finalSegment);
-                    totalDistance += finalSegment.distance;
-                    totalDuration += finalSegment.duration;
-                    
-                    console.log('\n🎯 複数点経由ルート計算完了');
+                    console.log('\n🎯 分割戦略ルート計算完了');
                     console.log(`  ✅ 総セグメント数: ${allSegments.length}`);
                     console.log(`  ✅ 総距離: ${totalDistance.toFixed(2)}km`);
                     console.log(`  ✅ 総時間: ${Math.round(totalDuration)}分`);
                     console.log(`  ✅ 中間点経由数: ${intermediatePoints.length}箇所`);
+                    console.log(`  ✅ 分割戦略: ${routeCalculations.length}個の独立ルート`);
                     
                     return {
                         success: true,
                         segments: allSegments,
                         totalDistance: totalDistance,
                         totalDuration: totalDuration,
-                        exitPoint: nextPos
+                        exitPoint: nextPos,
+                        routeStrategy: 'divided_segments',
+                        segmentCount: routeCalculations.length
                     };
                 } catch (error) {
-                    console.error('❌ 複数点経由ルート計算エラー:', error);
+                    console.error('❌ 分割戦略ルート計算エラー:', error);
                     return {
                         success: false,
                         error: error.message
@@ -2495,6 +2548,7 @@
             // 中間点マーカー表示（詳細情報付き）
             if (selectedSegments.intermediatePoints && selectedSegments.intermediatePoints.length > 0) {
                 console.log(`🛤️ 中間点 ${selectedSegments.intermediatePoints.length} 箇所を表示`);
+                console.log('🔍 中間点詳細:', selectedSegments.intermediatePoints);
                 
                 selectedSegments.intermediatePoints.forEach((point, index) => {
                     try {
@@ -2526,7 +2580,12 @@
                     }
                 });
             } else {
-                console.log('ℹ️ 中間点は設定されていません');
+                console.log('⚠️ 中間点データの確認:');
+                console.log('  selectedSegments:', selectedSegments);
+                console.log('  selectedSegments.intermediatePoints:', selectedSegments.intermediatePoints);
+                console.log('  typeof intermediatePoints:', typeof selectedSegments.intermediatePoints);
+                console.log('  Array.isArray(intermediatePoints):', Array.isArray(selectedSegments.intermediatePoints));
+                console.log('ℹ️ 中間点は設定されていません（または正しく渡されていません）');
             }
             
             // 出口マーカー表示
@@ -3191,7 +3250,7 @@
 
         // 初期化処理
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('統合版ナビアプリ（改良版）初期化開始');
+            console.log('統合版ナビアプリ（分割戦略版）初期化開始');
             
             try {
                 initMap();
@@ -3205,7 +3264,7 @@
                 
                 setTimeout(() => {
                     const roadCount = Object.keys(PRESET_ROADS).length;
-                    showStatus(`統合版ナビアプリ（改良版）準備完了！中間点設置アルゴリズムで指定道路を確実に経由します。プリセット道路（${roadCount}道路）をクリックして経由道路を追加してください。`, 'success');
+                    showStatus(`統合版ナビアプリ（分割戦略版）準備完了！分割セグメント戦略で指定道路を確実に経由します。プリセット道路（${roadCount}道路）をクリックして経由道路を追加してください。`, 'success');
                 }, 1500);
                 
             } catch (error) {
