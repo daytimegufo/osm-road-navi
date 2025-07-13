@@ -666,7 +666,7 @@
                     
                     <h4>🎯 採用戦略</h4>
                     <div id="strategyResults"></div>
-                    <button id="openGoogleMapsBtn" class="btn-secondary" onclick="openInGoogleMaps()" style="display: none; margin-top: 10px;">🌏 Googleマップで開く</button>
+                    <button id="openGoogleMapsBtn" class="btn-secondary" onclick="openInGoogleMaps()" style="display: none; margin-top: 100px;">🌏 Googleマップで開く</button>
                 </div>
             </div>
             
@@ -3307,6 +3307,16 @@
             lastGoogleMapsUrl = generateGoogleMapsUrl(start, end, waypoints);
             const btn = document.getElementById('openGoogleMapsBtn');
             if (btn) btn.style.display = 'block';
+            const base = `https://www.google.com/maps/dir/?api=1`;
+            const origin = `&origin=${startCoords.lat},${startCoords.lng}`;
+            const destination = `&destination=${endCoords.lat},${endCoords.lng}`;
+            const via = waypoints.map(p => `${p.lat},${p.lng}`).join('|');
+            lastGoogleMapsUrl = `${base}${origin}${destination}${via ? '&waypoints=' + via : ''}`;
+
+            // ボタンを表示
+            if (lastGoogleMapsUrl && btn) {
+                btn.style.display = 'block';
+            }
         }
 
         function openInGoogleMaps() {
