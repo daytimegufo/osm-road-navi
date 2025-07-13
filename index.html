@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>統合版：道路入口選択最適化ナビ（分割戦略版）</title>
+    <title>デモ版：タクシー運転手用ナビ</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -472,6 +472,12 @@
             text-transform: uppercase;
         }
         
+        .stat-note {
+            font-size: 0.7em;
+            color: #666;
+            margin-top: 4px;
+        }
+        
         /* 料金設定の見た目改善 */
         .fare-setting {
             background: #fff;
@@ -532,7 +538,7 @@
     <div class="app-container">
         <div class="control-panel">
             <div class="header">
-                <h1>🗺️ 統合版：道路入口選択最適化ナビ（分割戦略版）</h1>
+                <h1>🗺️ デモ版：タクシー運転手用ナビ</h1>
                 <p>分割セグメント戦略 + 中間点設置アルゴリズム + 地理的距離ベース選択</p>
                 <button class="settings-toggle" onclick="toggleSettings()">⚙️</button>
             </div>
@@ -542,7 +548,7 @@
                 <div class="settings-content">
                     <h3>⚙️ 料金設定</h3>
                     <div class="fare-setting">
-                        <label for="costPerKm">タクシー料金（円／km）</label>
+                        <label for="costPerKm">タクシー料金（円／km）※渋滞考慮推奨</label>
                         <div class="fare-controls">
                             <button class="btn-icon" id="decreaseCost">−</button>
                             <input type="number" id="costPerKm" value="500" min="0" step="10">
@@ -604,7 +610,7 @@
                 <div class="location-input">
                     <label>目的地</label>
                     <div class="input-group">
-                        <input type="text" id="endLocation" value="新宿駅" placeholder="住所または地名を入力">
+                        <input type="text" id="endLocation" value="伊勢丹新宿" placeholder="住所または地名を入力">
                         <button class="btn-icon" onclick="getCurrentLocation('end')">📍</button>
                     </div>
                 </div>
@@ -650,6 +656,7 @@
                         <div class="stat-item">
                             <div class="stat-value" id="routeTime">-</div>
                             <div class="stat-label">時間</div>
+                            <div class="stat-note">東京10km平均移動時間27分15秒</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-value" id="routeFare">-</div>
@@ -679,6 +686,8 @@
     <script>
         // ルート検索後の概算料金計算に使う単価（円／km）
         let costPerKm = 500;
+        // 東京10km平均移動時間27分15秒から算出した1kmあたりの平均移動時間（分）
+        const AVERAGE_MINUTES_PER_KM = 27.25 / 10;
 
         // 表示設定フラグ
         let showRouteMarkers = true;
@@ -1158,7 +1167,7 @@
                     }
                 ]
             },
-            '外堀通り': {
+/*             '外堀通り': {
                 name: '外堀通り',
                 alternativeName: '外濠通り',
                 segments: [
@@ -1261,8 +1270,8 @@
                             }
                         }
                     }
-                ]
-            }
+                ] 
+            }*/
         };
 
         // アイコン定義
@@ -2273,11 +2282,16 @@
                     
                     if (data.routes && data.routes.length > 0) {
                         const route = data.routes[0];
-                        console.log(`✅ OSRM: ${(route.distance/1000).toFixed(2)}km, ${Math.round(route.duration/60)}分`);
+//                        console.log(`✅ OSRM: ${(route.distance/1000).toFixed(2)}km, ${Math.round(route.duration/60)}分`);
+                        const distanceKm = route.distance / 1000;
+                        const durationMin = distanceKm * AVERAGE_MINUTES_PER_KM;
+                        console.log(`✅ OSRM: ${distanceKm.toFixed(2)}km, 約${Math.round(durationMin)}分`);
                         return {
                             geometry: route.geometry,
-                            distance: route.distance / 1000,
-                            duration: route.duration / 60,
+//                            distance: route.distance / 1000,
+//                            duration: route.duration / 60,distance: distanceKm,
+                            distance: distanceKm,
+                            duration: durationMin,
                             steps: route.legs[0]?.steps || [],
                             engine: 'osrm'
                         };
@@ -2312,12 +2326,17 @@
                         const route = data.features[0];
                         const props = route.properties;
                         
-                        console.log(`✅ OpenRoute: ${(props.summary.distance/1000).toFixed(2)}km, ${Math.round(props.summary.duration/60)}分`);
-                        
+//                        console.log(`✅ OpenRoute: ${(props.summary.distance/1000).toFixed(2)}km, ${Math.round(props.summary.duration/60)}分`);
+                        const distanceKm = props.summary.distance / 1000;
+                        const durationMin = distanceKm * AVERAGE_MINUTES_PER_KM;                        
+                        console.log(`✅ OpenRoute: ${distanceKm.toFixed(2)}km, 約${Math.round(durationMin)}分`);
+
                         return {
                             geometry: route.geometry,
-                            distance: props.summary.distance / 1000,
-                            duration: props.summary.duration / 60,
+//                            distance: props.summary.distance / 1000,
+//                            duration: props.summary.duration / 60,
+                            distance: distanceKm,
+                            duration: durationMin,
                             steps: props.segments?.[0]?.steps || [],
                             engine: 'openroute'
                         };
