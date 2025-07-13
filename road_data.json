@@ -269,4 +269,24 @@
       }
     ]
   }
-}
+},
+{
+  "外堀通り": {
+    "name": "外堀通り",
+    "alias": [
+      "都道405号",
+      "都道405号外濠環状線"
+    ],
+    "description": "外堀通り（東京都道405号外濠環状線）",
+    "qualityScore": 98,
+    "segments": [
+      {
+        "name": "外堀通り",
+        "osmQuery": "外堀通り",
+        "alternativeQueries": [
+          "Tokyo Metropolitan Route 405",
+          "東京都道405号",
+          "都道405号",
+          "way[ref=\"405\"]",
+          "sotobori"
+        ],

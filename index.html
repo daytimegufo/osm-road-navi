@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>完全版：道路入口選択最適化ナビ</title>
+    <title>統合版：道路入口選択最適化ナビ</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -74,11 +74,20 @@
         }
         
         .settings-section.open {
-            max-height: 200px;
+            max-height: 500px;
         }
         
         .settings-content {
-            padding: 20px;
+            padding: 15px 20px;
+        }
+        
+        .settings-content h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.0em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .nav-section {
@@ -469,6 +478,7 @@
             padding: 10px;
             border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
         }
         
         .fare-setting label {
@@ -495,13 +505,34 @@
             height: 35px;
             font-size: 20px;
         }
+        
+        /* 表示設定の見た目改善 */
+        .display-setting {
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .display-setting label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        
+        .display-setting input[type="checkbox"] {
+            accent-color: #ff6b6b;
+        }
     </style>
 </head>
 <body>
     <div class="app-container">
         <div class="control-panel">
             <div class="header">
-                <h1>🗺️ 完全版：道路入口選択最適化ナビ</h1>
+                <h1>🗺️ 統合版：道路入口選択最適化ナビ</h1>
                 <p>プリセット道路データ + インテリジェント戦略 + 地点タイプ別最適化</p>
                 <button class="settings-toggle" onclick="toggleSettings()">⚙️</button>
             </div>
@@ -517,6 +548,22 @@
                             <input type="number" id="costPerKm" value="500" min="0" step="10">
                             <button class="btn-icon" id="increaseCost">＋</button>
                         </div>
+                    </div>
+                    
+                    <h3>🗺️ 表示設定</h3>
+                    <div class="display-setting">
+                        <label>
+                            <input type="checkbox" id="showRouteMarkers" checked>
+                            <span>ルートマーカーを表示</span>
+                        </label>
+                        <label>
+                            <input type="checkbox" id="showRouteInfo" checked>
+                            <span>距離・時間情報を表示</span>
+                        </label>
+                        <label>
+                            <input type="checkbox" id="showSegmentDetails" checked>
+                            <span>道路セグメント詳細を表示</span>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -633,10 +680,46 @@
         // ルート検索後の概算料金計算に使う単価（円／km）
         let costPerKm = 500;
 
-        // 設定セクションの開閉
+        // 表示設定フラグ
+        let showRouteMarkers = true;
+        let showRouteInfo = true;
+        let showSegmentDetails = true;
+
+        // 設定セクションの開閉機能（改善版）
         function toggleSettings() {
             const settingsSection = document.getElementById('settingsSection');
-            settingsSection.classList.toggle('open');
+            if (settingsSection) {
+                const isCurrentlyOpen = settingsSection.classList.contains('open');
+                
+                if (isCurrentlyOpen) {
+                    // 閉じる処理
+                    settingsSection.classList.remove('open');
+                    settingsSection.style.maxHeight = '0px';
+                    settingsSection.style.overflow = 'hidden';
+                    settingsSection.style.transition = 'max-height 0.3s ease';
+                    
+                    const button = document.querySelector('.settings-toggle');
+                    button.style.transform = 'rotate(0deg)';
+                    
+                    showStatus('設定パネルを閉じました', 'info');
+                } else {
+                    // 開く処理
+                    settingsSection.classList.add('open');
+                    
+                    // 実際の高さを測定して設定
+                    const actualHeight = settingsSection.scrollHeight;
+                    settingsSection.style.maxHeight = actualHeight + 'px';
+                    settingsSection.style.overflow = 'visible';
+                    settingsSection.style.transition = 'max-height 0.3s ease';
+                    
+                    const button = document.querySelector('.settings-toggle');
+                    button.style.transform = 'rotate(90deg)';
+                    
+                    showStatus('設定パネルを開きました', 'success');
+                }
+            } else {
+                console.error('設定セクションが見つかりません');
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -647,18 +730,41 @@
             // 数値直接入力時
             input.addEventListener('change', () => {
                 costPerKm = parseInt(input.value, 10) || 0;
+                showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
             });
 
             // − ボタン
             btnDec.addEventListener('click', () => {
                 costPerKm = Math.max(0, costPerKm - 10);
                 input.value = costPerKm;
+                showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
             });
 
             // ＋ ボタン
             btnInc.addEventListener('click', () => {
                 costPerKm += 10;
                 input.value = costPerKm;
+                showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
+            });
+
+            // 表示設定のイベントリスナー
+            document.getElementById('showRouteMarkers').addEventListener('change', (e) => {
+                showRouteMarkers = e.target.checked;
+                showStatus(`ルートマーカー表示を ${showRouteMarkers ? 'ON' : 'OFF'} にしました`, 'info');
+            });
+
+            document.getElementById('showRouteInfo').addEventListener('change', (e) => {
+                showRouteInfo = e.target.checked;
+                const routeInfoSection = document.getElementById('routeInfoSection');
+                if (routeInfoSection.style.display !== 'none') {
+                    routeInfoSection.style.display = showRouteInfo ? 'block' : 'none';
+                }
+                showStatus(`距離・時間情報表示を ${showRouteInfo ? 'ON' : 'OFF'} にしました`, 'info');
+            });
+
+            document.getElementById('showSegmentDetails').addEventListener('change', (e) => {
+                showSegmentDetails = e.target.checked;
+                showStatus(`道路セグメント詳細表示を ${showSegmentDetails ? 'ON' : 'OFF'} にしました`, 'info');
             });
         });
 
@@ -696,7 +802,7 @@
             presetRoads.style.display = source === 'preset' ? 'block' : 'none';
         }
 
-        // プリセット道路データベース（将来的に外部ファイル化予定）
+        // プリセット道路データベース（完全版）
         let PRESET_ROADS = {
             '六本木通り': {
                 name: '六本木通り',
@@ -1463,7 +1569,7 @@
             }
         }
 
-        // ルート計算クラス
+        // ルート計算クラス（完全版を維持）
         class RouteCalculator {
             constructor() {
                 this.segments = [];
@@ -1503,7 +1609,7 @@
                                 this.totalDuration += result.totalDuration;
                                 currentPos = result.exitPoint;
                                 
-                                if (result.selectedSegments) {
+                                if (result.selectedSegments && showSegmentDetails) {
                                     displaySelectedSegment(result.selectedSegments);
                                 }
                                 
@@ -1524,7 +1630,9 @@
                                 currentPos = result.exitPoint;
                                 
                                 // 地点タイプに応じたマーカー表示
-                                this.displayPointTypeMarker(routePoint.finalData);
+                                if (showRouteMarkers) {
+                                    this.displayPointTypeMarker(routePoint.finalData);
+                                }
                                 
                                 this.strategyResults.push({
                                     name: routePoint.finalData.name,
@@ -2144,13 +2252,16 @@
                 if (startMarker) map.removeLayer(startMarker);
                 if (endMarker) map.removeLayer(endMarker);
                 
-                startMarker = L.marker([startCoords.lat, startCoords.lng], { icon: icons.start })
-                    .bindPopup(`🚗 出発地: ${startAddress}`)
-                    .addTo(map);
-                    
-                endMarker = L.marker([endCoords.lat, endCoords.lng], { icon: icons.end })
-                    .bindPopup(`🏁 目的地: ${endAddress}`)
-                    .addTo(map);
+                // 表示設定に応じてマーカーを表示
+                if (showRouteMarkers) {
+                    startMarker = L.marker([startCoords.lat, startCoords.lng], { icon: icons.start })
+                        .bindPopup(`🚗 出発地: ${startAddress}`)
+                        .addTo(map);
+                        
+                    endMarker = L.marker([endCoords.lat, endCoords.lng], { icon: icons.end })
+                        .bindPopup(`🏁 目的地: ${endAddress}`)
+                        .addTo(map);
+                }
 
                 const routePoints = [];
                 const allRoutePoints = document.querySelectorAll('.route-point');
@@ -2208,26 +2319,32 @@
                     opacity: 0.9
                 }).addTo(map);
                 
-                // ルート情報を表示
-                document.getElementById('routeDistance').textContent = result.totalDistance.toFixed(1) + ' km';
-                document.getElementById('routeTime').textContent = Math.round(result.totalDuration) + ' 分';
-                
-                // 戦略結果を表示
-                if (result.strategyResults) {
-                    const strategyDiv = document.getElementById('strategyResults');
-                    strategyDiv.innerHTML = result.strategyResults
-                        .map((strategy, idx) => {
-                            const status = strategy.success ? '✅' : '❌';
-                            const strategyIcon = {
-                                'road-segment': '🛣️',
-                                'waypoint': '📍',
-                                'direct': '➡️'
-                            }[strategy.strategy] || '❓';
-                            return `${idx + 1}. ${strategyIcon} ${strategy.name} ${status} ${strategy.details || ''}`;
-                        })
-                        .join('<br>');
+                // 表示設定に応じてルート情報を表示
+                if (showRouteInfo) {
+                    document.getElementById('routeDistance').textContent = result.totalDistance.toFixed(1) + ' km';
+                    document.getElementById('routeTime').textContent = Math.round(result.totalDuration) + ' 分';
+                    
+                    // 概算料金計算（料金設定を反映）
+                    const fare = Math.round(result.totalDistance * costPerKm);
+                    document.getElementById('routeFare').textContent = fare.toLocaleString() + ' 円';
+                    
+                    // 戦略結果を表示
+                    if (result.strategyResults) {
+                        const strategyDiv = document.getElementById('strategyResults');
+                        strategyDiv.innerHTML = result.strategyResults
+                            .map((strategy, idx) => {
+                                const status = strategy.success ? '✅' : '❌';
+                                const strategyIcon = {
+                                    'road-segment': '🛣️',
+                                    'waypoint': '📍',
+                                    'direct': '➡️'
+                                }[strategy.strategy] || '❓';
+                                return `${idx + 1}. ${strategyIcon} ${strategy.name} ${status} ${strategy.details || ''}`;
+                            })
+                            .join('<br>');
 
-                    document.getElementById('routeInfoSection').style.display = 'block';
+                        document.getElementById('routeInfoSection').style.display = 'block';
+                    }
                 }
                 
                 const allMarkers = [startMarker, endMarker, ...roadSegmentLayers].filter(m => m);
@@ -2236,9 +2353,6 @@
                     map.fitBounds(group.getBounds(), { padding: [50, 50] });
                 }
             }
-            // ルート距離（km） × 単価（円／km） ＝ 概算料金（円）
-            const fare = Math.round(result.totalDistance * costPerKm);
-            document.getElementById('routeFare').textContent = fare.toLocaleString() + ' 円';
         }
 
         function clearRoute() {
@@ -2720,17 +2834,21 @@
 
         // 初期化処理
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('完全版ナビアプリ初期化開始');
+            console.log('統合版ナビアプリ初期化開始');
             
             try {
                 initMap();
                 
                 // 外部道路データの読み込み試行（オプション）
-                await loadExternalRoadData('./road_data.json');
+                try {
+                    await loadExternalRoadData('./road_data.json');
+                } catch (error) {
+                    console.log('外部データファイルなし - 内蔵データを使用');
+                }
                 
                 setTimeout(() => {
                     const roadCount = Object.keys(PRESET_ROADS).length;
-                    showStatus(`完全版ナビアプリ準備完了！プリセット道路（${roadCount}道路）をクリックして経由道路を追加してください。`, 'success');
+                    showStatus(`統合版ナビアプリ準備完了！プリセット道路（${roadCount}道路）をクリックして経由道路を追加してください。設定パネルで料金・表示設定をカスタマイズできます。`, 'success');
                 }, 1500);
                 
             } catch (error) {
