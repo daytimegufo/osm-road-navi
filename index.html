@@ -655,7 +655,7 @@
                         </div>
                         <div class="stat-item">
                             <div class="stat-value" id="routeTime">-</div>
-                            <div class="stat-label">時間</div>
+                            <div class="stat-label">概算時間</div>
                             <div class="stat-note">東京10km平均移動時間27分15秒</div>
                         </div>
                         <div class="stat-item">
@@ -666,6 +666,7 @@
                     
                     <h4>🎯 採用戦略</h4>
                     <div id="strategyResults"></div>
+                    <button id="openGoogleMapsBtn" class="btn-secondary" onclick="openInGoogleMaps()" style="display: none; margin-top: 10px;">🌏 Googleマップで開く</button>
                 </div>
             </div>
             
@@ -786,6 +787,7 @@
         let routePointCounter = 0;
         let selectedNavEngine = 'osrm';
         let currentDataSource = 'preset';
+        let lastGoogleMapsUrl = null;
 
         // ナビエンジン切り替え
         function updateNavEngine(engine) {
@@ -2679,6 +2681,8 @@
 
             showLoading(true);
             document.getElementById('calculateBtn').disabled = true;
+            const gmapBtn = document.getElementById('openGoogleMapsBtn');
+            if (gmapBtn) gmapBtn.style.display = 'none';
 
             try {
                 const startCoords = await geocodeAddress(startAddress);
@@ -2716,12 +2720,16 @@
                 }
 
                 const routeCalculator = new RouteCalculator();
+                const googleWaypoints = routePoints.map(rp => extractWaypointCoords(rp)).filter(p => p);
+
                 const result = await routeCalculator.calculateOptimizedRoute(
                     startCoords, endCoords, routePoints
                 );
 
                 if (result.success) {
                     displayCalculatedRoute(result);
+
+                    updateGoogleMapsLink(startCoords, endCoords, googleWaypoints);
                     
                     const engineName = {
                         'osrm': 'OSRM',
@@ -2805,7 +2813,9 @@
             document.getElementById('endLocation').value = '';
             document.getElementById('routePoints').innerHTML = '';
             document.getElementById('routeInfoSection').style.display = 'none';
-            
+            const gmapBtn = document.getElementById('openGoogleMapsBtn');
+            if (gmapBtn) gmapBtn.style.display = 'none';
+
             routePointCounter = 0;
             showStatus('地図をクリアしました', 'info');
         }
@@ -3264,6 +3274,46 @@
             const loading = document.getElementById('loading');
             if (loading) {
                 loading.className = show ? 'loading show' : 'loading';
+            }
+        }
+        function generateGoogleMapsUrl(start, end, waypoints) {
+            const base = 'https://www.google.com/maps/dir/?api=1';
+            const origin = `&origin=${start.lat},${start.lng}`;
+            const destination = `&destination=${end.lat},${end.lng}`;
+            const wp = waypoints.slice(0, 8).map(p => `${p.lat},${p.lng}`).join('|');
+            const waypointParam = wp ? `&waypoints=${wp}` : '';
+            return `${base}${origin}${destination}${waypointParam}&travelmode=driving`;
+        }
+
+        function extractWaypointCoords(rp) {
+            if (rp.finalData) {
+                if (rp.finalData.centerPoint) {
+                    return { lat: rp.finalData.centerPoint[0], lng: rp.finalData.centerPoint[1] };
+                }
+                if (rp.finalData.segments && rp.finalData.segments.length > 0) {
+                    const seg = rp.finalData.segments[0];
+                    if (seg.lanes) {
+                        const lane = Object.values(seg.lanes)[0];
+                        if (lane && lane.coords && lane.coords.length >= 2) {
+                            return { lat: lane.coords[0], lng: lane.coords[1] };
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        function updateGoogleMapsLink(start, end, waypoints) {
+            lastGoogleMapsUrl = generateGoogleMapsUrl(start, end, waypoints);
+            const btn = document.getElementById('openGoogleMapsBtn');
+            if (btn) btn.style.display = 'block';
+        }
+
+        function openInGoogleMaps() {
+            if (lastGoogleMapsUrl) {
+                window.open(lastGoogleMapsUrl, '_blank');
+            } else {
+                alert('ルートを計算してからご利用ください');
             }
         }
 
