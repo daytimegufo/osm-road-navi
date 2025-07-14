@@ -539,7 +539,7 @@
         <div class="control-panel">
             <div class="header">
                 <h1>🗺️ デモ版：タクシー運転手用ナビ</h1>
-                <p>〇〇通りを通って△△まで、復唱するように入力する※正確な道路データは、整備中</p>
+                <p>〇〇通りを通って△△まで、復唱するように入力※正確な道路データは、整備中</p>
                 <button class="settings-toggle" onclick="toggleSettings()">⚙️</button>
             </div>
             
@@ -737,7 +737,7 @@
         let endMarker = null;
         let routeLayer = null;
         let roadSegmentLayers = [];
-        const MAX_ROUTE_POINTS = 2; // 経由点は最大2点まで
+        const MAX_ROUTE_POINTS = 8; // 経由点は最大8点まで
         let routePointCounter = 0;
         let selectedNavEngine = 'osrm';
         let currentDataSource = 'preset';
