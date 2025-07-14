@@ -2726,28 +2726,28 @@
                     document.getElementById('routeFare').textContent = fare.toLocaleString() + ' 円';
                     
                     // 戦略結果を表示
-                    if (result.strategyResults) {
-                        const strategyDiv = document.getElementById('strategyResults');
-                        strategyDiv.innerHTML = result.strategyResults
-                            .map((strategy, idx) => {
-                                const status = strategy.success ? '✅' : '❌';
-                                const strategyIcon = {
-                                    'road-segment': '🛣️',
-                                    'waypoint': '📍',
-                                    'direct': '➡️'
-                                }[strategy.strategy] || '❓';
-                                return `${idx + 1}. ${strategyIcon} ${strategy.name} ${status} ${strategy.details || ''}`;
-                            })
-                            .join('<br>');
-
-                        document.getElementById('routeInfoSection').style.display = 'block';
-                    }
-                }
-                
-                const allMarkers = [startMarker, endMarker, ...roadSegmentLayers].filter(m => m);
-                if (allMarkers.length > 0) {
-                    const group = new L.featureGroup(allMarkers);
-                    map.fitBounds(group.getBounds(), { padding: [50, 50] });
+//                    if (result.strategyResults) {
+//                        const strategyDiv = document.getElementById('strategyResults');
+//                        strategyDiv.innerHTML = result.strategyResults
+//                            .map((strategy, idx) => {
+//                                const status = strategy.success ? '✅' : '❌';
+//                                const strategyIcon = {
+//                                    'road-segment': '🛣️',
+//                                    'waypoint': '📍',
+//                                    'direct': '➡️'
+//                                }[strategy.strategy] || '❓';
+//                                return `${idx + 1}. ${strategyIcon} ${strategy.name} ${status} ${strategy.details || ''}`;
+//                            })
+//                            .join('<br>');
+//
+//                        document.getElementById('routeInfoSection').style.display = 'block';
+//                    }
+//                }
+//                
+//                const allMarkers = [startMarker, endMarker, ...roadSegmentLayers].filter(m => m);
+//                if (allMarkers.length > 0) {
+//                    const group = new L.featureGroup(allMarkers);
+//                    map.fitBounds(group.getBounds(), { padding: [50, 50] });
                 }
             }
         }
@@ -3330,7 +3330,7 @@
                     showSegmentDetails = e.target.checked;
                     showStatus(`道路セグメント詳細表示を ${showSegmentDetails ? 'ON' : 'OFF'} にしました`, 'info');
                 });
-                
+
                 // 出発地入力欄で Enter キーが押されたらマーカー表示
                 const startInput = document.getElementById('startLocation');
                 startInput.addEventListener('keydown', async (e) => {
