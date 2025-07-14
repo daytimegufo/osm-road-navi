@@ -3333,7 +3333,38 @@
             
             try {
                 initMap();
+                // 出発地入力欄で Enter キーが押されたらマーカー表示
+                const startInput = document.getElementById('startLocation');
+                startInput.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const address = startInput.value.trim();
+                        if (!address) return;
+                        try {
+                            const coords = await geocodeAddress(address);
+                            if (startMarker) map.removeLayer(startMarker);
+                            startMarker = L.marker([coords.lat, coords.lng], { icon: icons.start })
+                                .bindPopup(`🚗 出発地: ${address}`)
+                                .addTo(map);
+                            map.setView([coords.lat, coords.lng], 15);
+                            showStatus('出発地を設定しました', 'success');
+                        } catch (err) {
+                            console.error('出発地設定エラー:', err);
+                            showStatus('出発地を設定できません', 'error');
+                        }
+                    }
+                });
                 
+                // 目的地入力欄で Enter キーを押したらルート検索を実行
+                const endInput = document.getElementById('endLocation');
+                if (endInput) {
+                    endInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            calculateOptimizedRoute();
+                        }
+                    });
+                }
                 // 外部道路データの読み込み試行（オプション）
                 try {
                     await loadExternalRoadData('./road_data.json');
