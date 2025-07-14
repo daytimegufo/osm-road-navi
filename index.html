@@ -2685,7 +2685,7 @@
                         }
                     }
                 }
-                
+
                 // 安全のため、経由点は最大数に制限
                 if (routePoints.length > MAX_ROUTE_POINTS) {
                     showStatus(`経由点は最大${MAX_ROUTE_POINTS}点までです。先頭${MAX_ROUTE_POINTS}点のみ使用します`, 'info');
@@ -2745,28 +2745,28 @@
                     document.getElementById('routeFare').textContent = fare.toLocaleString() + ' 円';
                     
                     // 戦略結果を表示
-//                    if (result.strategyResults) {
-//                        const strategyDiv = document.getElementById('strategyResults');
-//                        strategyDiv.innerHTML = result.strategyResults
-//                            .map((strategy, idx) => {
-//                                const status = strategy.success ? '✅' : '❌';
-//                                const strategyIcon = {
-//                                    'road-segment': '🛣️',
-//                                    'waypoint': '📍',
-//                                    'direct': '➡️'
-//                                }[strategy.strategy] || '❓';
-//                                return `${idx + 1}. ${strategyIcon} ${strategy.name} ${status} ${strategy.details || ''}`;
-//                            })
-//                            .join('<br>');
-//
-//                        document.getElementById('routeInfoSection').style.display = 'block';
-//                    }
-//                }
-//                
-//                const allMarkers = [startMarker, endMarker, ...roadSegmentLayers].filter(m => m);
-//                if (allMarkers.length > 0) {
-//                    const group = new L.featureGroup(allMarkers);
-//                    map.fitBounds(group.getBounds(), { padding: [50, 50] });
+                    if (result.strategyResults) {
+                        const strategyDiv = document.getElementById('strategyResults');
+                        strategyDiv.innerHTML = result.strategyResults
+                            .map((strategy, idx) => {
+                                const status = strategy.success ? '✅' : '❌';
+                                const strategyIcon = {
+                                    'road-segment': '🛣️',
+                                    'waypoint': '📍',
+                                    'direct': '➡️'
+                                }[strategy.strategy] || '❓';
+                                return `${idx + 1}. ${strategyIcon} ${strategy.name} ${status} ${strategy.details || ''}`;
+                            })
+                            .join('<br>');
+
+                        document.getElementById('routeInfoSection').style.display = 'block';
+                    }
+                }
+                
+                const allMarkers = [startMarker, endMarker, ...roadSegmentLayers].filter(m => m);
+                if (allMarkers.length > 0) {
+                    const group = new L.featureGroup(allMarkers);
+                    map.fitBounds(group.getBounds(), { padding: [50, 50] });
                 }
             }
         }
