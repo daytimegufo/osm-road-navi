@@ -1541,6 +1541,7 @@
                 this.totalDistance = 0;
                 this.totalDuration = 0;
                 this.strategyResults = [];
+                this.googleWaypoints = [];
             }
 
             async calculateOptimizedRoute(startCoords, endCoords, routePoints) {
@@ -1549,6 +1550,7 @@
                     this.totalDistance = 0;
                     this.totalDuration = 0;
                     this.strategyResults = [];
+                    this.googleWaypoints = [];
                     
                     console.log('🎯 ルート計算開始:', { routePointsCount: routePoints.length });
                     
@@ -1574,6 +1576,23 @@
                                 this.totalDuration += result.totalDuration;
                                 currentPos = result.exitPoint;
                                 
+                                if (routePoint.finalData.centerPoint) {
+                                    this.googleWaypoints.push({
+                                        lat: routePoint.finalData.centerPoint[0],
+                                        lng: routePoint.finalData.centerPoint[1]
+                                    });
+                                }
+
+                                if (result.selectedSegments) {
+                                    const e = result.selectedSegments.entry.selectedLane.data.coords;
+                                    this.googleWaypoints.push({ lat: e[0], lng: e[1] });
+                                    result.selectedSegments.intermediatePoints.forEach(p => {
+                                        this.googleWaypoints.push({ lat: p.coordinates[0], lng: p.coordinates[1] });
+                                    });
+                                    const x = result.selectedSegments.exit.selectedLane.data.coords;
+                                    this.googleWaypoints.push({ lat: x[0], lng: x[1] });
+                                }
+
                                 if (result.selectedSegments && showSegmentDetails) {
                                     console.log('🗺️ 表示用セグメント情報:', result.selectedSegments);
                                     displaySelectedSegment(result.selectedSegments);
@@ -1620,7 +1639,8 @@
                         totalDuration: this.totalDuration,
                         routeCoordinates: this.combineRouteCoordinates(),
                         strategyResults: this.strategyResults,
-                        optimizationApplied: true
+                        optimizationApplied: true,
+                        googleWaypoints: this.googleWaypoints
                     };
 
                 } catch (error) {
@@ -2633,15 +2653,6 @@
                 }
 
                 const routeCalculator = new RouteCalculator();
-                const googleWaypoints = [];
-                routePoints.forEach(rp => {
-                    const coordsArr = extractWaypointCoords(rp);
-                    if (Array.isArray(coordsArr)) {
-                        googleWaypoints.push(...coordsArr);
-                    } else if (coordsArr) {
-                        googleWaypoints.push(coordsArr);
-                    }
-                });
 
                 const result = await routeCalculator.calculateOptimizedRoute(
                     startCoords, endCoords, routePoints
@@ -2650,7 +2661,7 @@
                 if (result.success) {
                     displayCalculatedRoute(result);
 
-                    updateGoogleMapsLink(startCoords, endCoords, googleWaypoints);
+                    updateGoogleMapsLink(startCoords, endCoords, result.googleWaypoints || []);
                     
                     const engineName = {
                         'osrm': 'OSRM',
