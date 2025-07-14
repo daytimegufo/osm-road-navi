@@ -3251,23 +3251,13 @@
                     }
                 }
             }
-            return npoints;
+            return points;
         }
 
         function updateGoogleMapsLink(start, end, waypoints) {
             lastGoogleMapsUrl = generateGoogleMapsUrl(start, end, waypoints);
             const btn = document.getElementById('openGoogleMapsBtn');
             if (btn) btn.style.display = 'block';
-            const base = `https://www.google.com/maps/dir/?api=1`;
-            const origin = `&origin=${startCoords.lat},${startCoords.lng}`;
-            const destination = `&destination=${endCoords.lat},${endCoords.lng}`;
-            const via = waypoints.map(p => `${p.lat},${p.lng}`).join('|');
-            lastGoogleMapsUrl = `${base}${origin}${destination}${via ? '&waypoints=' + via : ''}`;
-
-            // ボタンを表示
-            if (lastGoogleMapsUrl && btn) {
-                btn.style.display = 'block';
-            }
         }
 
         function openInGoogleMaps() {
