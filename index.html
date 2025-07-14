@@ -732,52 +732,6 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const input = document.getElementById('costPerKm');
-            const btnDec = document.getElementById('decreaseCost');
-            const btnInc = document.getElementById('increaseCost');
-
-            // 数値直接入力時
-            input.addEventListener('change', () => {
-                costPerKm = parseInt(input.value, 10) || 0;
-                showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
-            });
-
-            // − ボタン
-            btnDec.addEventListener('click', () => {
-                costPerKm = Math.max(0, costPerKm - 10);
-                input.value = costPerKm;
-                showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
-            });
-
-            // ＋ ボタン
-            btnInc.addEventListener('click', () => {
-                costPerKm += 10;
-                input.value = costPerKm;
-                showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
-            });
-
-            // 表示設定のイベントリスナー
-            document.getElementById('showRouteMarkers').addEventListener('change', (e) => {
-                showRouteMarkers = e.target.checked;
-                showStatus(`ルートマーカー表示を ${showRouteMarkers ? 'ON' : 'OFF'} にしました`, 'info');
-            });
-
-            document.getElementById('showRouteInfo').addEventListener('change', (e) => {
-                showRouteInfo = e.target.checked;
-                const routeInfoSection = document.getElementById('routeInfoSection');
-                if (routeInfoSection.style.display !== 'none') {
-                    routeInfoSection.style.display = showRouteInfo ? 'block' : 'none';
-                }
-                showStatus(`距離・時間情報表示を ${showRouteInfo ? 'ON' : 'OFF'} にしました`, 'info');
-            });
-
-            document.getElementById('showSegmentDetails').addEventListener('change', (e) => {
-                showSegmentDetails = e.target.checked;
-                showStatus(`道路セグメント詳細表示を ${showSegmentDetails ? 'ON' : 'OFF'} にしました`, 'info');
-            });
-        });
-
         // グローバル変数
         let map;
         let startMarker = null;
@@ -3333,6 +3287,50 @@
             
             try {
                 initMap();
+                const input = document.getElementById('costPerKm');
+                const btnDec = document.getElementById('decreaseCost');
+                const btnInc = document.getElementById('increaseCost');
+
+                // 数値直接入力時
+                input.addEventListener('change', () => {
+                    costPerKm = parseInt(input.value, 10) || 0;
+                    showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
+                });
+
+                // − ボタン
+                btnDec.addEventListener('click', () => {
+                    costPerKm = Math.max(0, costPerKm - 10);
+                    input.value = costPerKm;
+                    showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
+                });
+
+                // ＋ ボタン
+                btnInc.addEventListener('click', () => {
+                    costPerKm += 10;
+                    input.value = costPerKm;
+                    showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
+                });
+
+                // 表示設定のイベントリスナー
+                document.getElementById('showRouteMarkers').addEventListener('change', (e) => {
+                    showRouteMarkers = e.target.checked;
+                    showStatus(`ルートマーカー表示を ${showRouteMarkers ? 'ON' : 'OFF'} にしました`, 'info');
+                });
+
+                document.getElementById('showRouteInfo').addEventListener('change', (e) => {
+                    showRouteInfo = e.target.checked;
+                    const routeInfoSection = document.getElementById('routeInfoSection');
+                    if (routeInfoSection.style.display !== 'none') {
+                        routeInfoSection.style.display = showRouteInfo ? 'block' : 'none';
+                    }
+                    showStatus(`距離・時間情報表示を ${showRouteInfo ? 'ON' : 'OFF'} にしました`, 'info');
+                });
+
+                document.getElementById('showSegmentDetails').addEventListener('change', (e) => {
+                    showSegmentDetails = e.target.checked;
+                    showStatus(`道路セグメント詳細表示を ${showSegmentDetails ? 'ON' : 'OFF'} にしました`, 'info');
+                });
+                
                 // 出発地入力欄で Enter キーが押されたらマーカー表示
                 const startInput = document.getElementById('startLocation');
                 startInput.addEventListener('keydown', async (e) => {
@@ -3365,6 +3363,7 @@
                         }
                     });
                 }
+
                 // 外部道路データの読み込み試行（オプション）
                 try {
                     await loadExternalRoadData('./road_data.json');
