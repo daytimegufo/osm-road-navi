@@ -1562,14 +1562,18 @@
                     
                     for (let i = 0; i < routePoints.length; i++) {
                         const routePoint = routePoints[i];
-                        const nextPos = (i < routePoints.length - 1) ? 
-                            this.getNextDestination(routePoints[i + 1]) : endCoords;
+                        const nextPointData = (i < routePoints.length - 1)
+                            ? routePoints[i + 1].finalData
+                            : { type: 'destination', centerPoint: [endCoords.lat, endCoords.lng], name: '目的地' };
+                        const nextPos = nextPointData.centerPoint
+                            ? { lat: nextPointData.centerPoint[0], lng: nextPointData.centerPoint[1] }
+                            : { lat: endCoords.lat, lng: endCoords.lng };
                         
                         console.log(`🛣️ 処理中 ${i + 1}/${routePoints.length}:`, routePoint.finalData.name);
                         
                         // 地点タイプに応じた処理の分岐
                         if (routePoint.finalData.type === 'road_segment') {
-                            const result = await this.calculateRoadSegmentRoute(currentPos, routePoint.finalData, nextPos);
+                            const result = await this.calculateRoadSegmentRoute(currentPos, routePoint.finalData, nextPointData);
                             if (result.success) {
                                 this.segments.push(...result.segments);
                                 this.totalDistance += result.totalDistance;
@@ -1713,11 +1717,24 @@
                 }
             }
 
-            async calculateRoadSegmentRoute(currentPos, roadData, nextPos) {
+            async calculateRoadSegmentRoute(currentPos, roadData, nextPoint) {
                 try {
                                             console.log('🚗 分割戦略版道路セグメントルート計算:', roadData.name);
                     
-                    const bestSegments = this.findBestSegment(currentPos, roadData.segments, nextPos);
+                    let nextPos = null;
+                    if (nextPoint && nextPoint.centerPoint) {
+                        nextPos = { lat: nextPoint.centerPoint[0], lng: nextPoint.centerPoint[1] };
+                    } else if (nextPoint && typeof nextPoint.lat === 'number' && typeof nextPoint.lng === 'number') {
+                        nextPos = { lat: nextPoint.lat, lng: nextPoint.lng };
+                    }
+
+                    const bestSegments = this.findBestSegment(
+                        currentPos,
+                        roadData.segments,
+                        nextPos,
+                        nextPoint?.type,
+                        nextPoint?.name
+                    );
                     
                     if (bestSegments && bestSegments.entry && bestSegments.exit) {
                         const entryPoint = { 
@@ -2033,7 +2050,7 @@
                 }
             }
 
-            findBestSegment(currentPos, segments, nextPos) {
+            findBestSegment(currentPos, segments, nextPos, nextType = null, nextName = '') {
                 console.log('🎯 改良版：方向一貫性を考慮した入口・出口選択開始');
                 console.log(`📍 現在位置: [${currentPos.lat.toFixed(6)}, ${currentPos.lng.toFixed(6)}]`);
                 console.log(`📍 次の目的地: [${nextPos.lat.toFixed(6)}, ${nextPos.lng.toFixed(6)}]`);
@@ -2095,25 +2112,28 @@
                 console.log(`\n🧭 選択された方向: ${selectedDirection}`);
                 console.log(`🏆 最良入口: ${bestEntry?.name} [${bestEntry?.selectedLane?.type}]`);
                 
-                // 出口候補の評価（同じ方向のみ）
-                console.log('\n🚪 出口候補の評価 (同じ方向のみ):');
+                // 出口候補の評価
+                console.log(`\n🚪 出口候補の評価${nextType !== 'road_segment' ? ' (最寄り優先)' : ' (同じ方向のみ)'}:`);
                 for (const segment of segments) {
                     if (!segment.lanes) continue;
                     
                     for (const [laneType, laneData] of Object.entries(segment.lanes)) {
                         if (!laneData.coords) continue;
                         
-                        if (laneData.direction !== selectedDirection) {
+                        if (nextType === 'road_segment' && laneData.direction !== selectedDirection) {
                             console.log(`  ⏭️ スキップ: ${segment.name} [${laneType}] (方向不一致: ${laneData.direction} ≠ ${selectedDirection})`);
                             continue;
                         }
                         
-                        const segmentPoint = { 
-                            lat: laneData.coords[0], 
+                        const segmentPoint = {
+                            lat: laneData.coords[0],
                             lng: laneData.coords[1] 
                         };
 
-                        const distanceToNext = this.calculateDistance(segmentPoint, nextPos);
+                        let distanceToNext = this.calculateDistance(segmentPoint, nextPos);
+                        if (nextName && laneData.intersection && laneData.intersection.includes(nextName)) {
+                            distanceToNext *= 0.1; // 優先的に選択
+                        }
                         const exitScore = 1 / Math.max(distanceToNext, 0.01);
                         
                         console.log(`  ${segment.name} [${laneType}] (${laneData.direction}):`);
