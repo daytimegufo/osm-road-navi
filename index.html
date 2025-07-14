@@ -2646,17 +2646,19 @@
                     // 戦略結果を表示
                     if (result.strategyResults) {
                         const strategyDiv = document.getElementById('strategyResults');
-                        strategyDiv.innerHTML = result.strategyResults
-                            .map((strategy, idx) => {
-                                const status = strategy.success ? '✅' : '❌';
-                                const strategyIcon = {
-                                    'road-segment': '🛣️',
-                                    'waypoint': '📍',
-                                    'direct': '➡️'
-                                }[strategy.strategy] || '❓';
-                                return `${idx + 1}. ${strategyIcon} ${strategy.name} ${status} ${strategy.details || ''}`;
-                            })
-                            .join('<br>');
+                        if (strategyDiv) {
+                            strategyDiv.innerHTML = result.strategyResults
+                                .map((strategy, idx) => {
+                                    const status = strategy.success ? '✅' : '❌';
+                                    const strategyIcon = {
+                                        'road-segment': '🛣️',
+                                        'waypoint': '📍',
+                                        'direct': '➡️'
+                                    }[strategy.strategy] || '❓';
+                                    return `${idx + 1}. ${strategyIcon} ${strategy.name} ${status} ${strategy.details || ''}`;
+                                })
+                                .join('<br>');
+                        }
 
                         document.getElementById('routeInfoSection').style.display = 'block';
                     }
