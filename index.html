@@ -1765,8 +1765,6 @@
                 console.log('🛤️ 単一中間点生成開始');
 
                 const direction = entrySegment.direction;
-                
-                // 入口と出口の座標
                 const entryCoords = entrySegment.coordinates;
                 const exitCoords = exitSegment.coordinates;
                 
@@ -1774,7 +1772,6 @@
                 console.log(`📍 入口座標: [${entryCoords[0].toFixed(6)}, ${entryCoords[1].toFixed(6)}]`);
                 console.log(`📍 出口座標: [${exitCoords[0].toFixed(6)}, ${exitCoords[1].toFixed(6)}]`);
                 
-                // 入口と出口の間の直線距離を計算
                 const totalDistance = this.calculateDistance(
                     { lat: entryCoords[0], lng: entryCoords[1] },
                     { lat: exitCoords[0], lng: exitCoords[1] }
@@ -1782,30 +1779,74 @@
                 
                 console.log(`📏 入口-出口間距離: ${totalDistance.toFixed(3)}km`);
                 
-                // 距離が短い場合は中間点を設置しない
                 if (totalDistance < 2.0) {
                     console.log('⚠️ 距離が短いため中間点は設置しません');
                     return [];
                 }
                 
-                // 入口と出口の中間座標を算出
-                const midLat = (entryCoords[0] + exitCoords[0]) / 2;
-                const midLng = (entryCoords[1] + exitCoords[1]) / 2;
+                const entryIndex = segments.findIndex(s => s.name === entrySegment.name);
+                const exitIndex = segments.findIndex(s => s.name === exitSegment.name);
+
+                if (entryIndex === -1 || exitIndex === -1) {
+                    console.warn('⚠️ セグメントインデックスが見つからないため中間点を生成できません');
+                    return [];
+                }
+
+                let startIdx = entryIndex;
+                let endIdx = exitIndex;
+                if (startIdx > endIdx) {
+                    [startIdx, endIdx] = [endIdx, startIdx];
+                }
+
+                if (endIdx - startIdx < 2) {
+                    console.log('⚠️ 中間セグメントが存在しないため中間点は設置しません');
+                    return [];
+                }
+
+                const midIdx = Math.floor((startIdx + endIdx) / 2);
+                const midSegment = segments[midIdx];
+
+                let laneData = null;
+                if (midSegment.lanes) {
+                    for (const [type, data] of Object.entries(midSegment.lanes)) {
+                        if (data.direction === direction) {
+                            laneData = data;
+                            break;
+                        }
+                    }
+                }
+
+                if (!laneData || !laneData.coords) {
+                    console.warn('⚠️ 中間セグメントに方向一致するレーンが見つかりません');
+                    return [];
+                }
+
+                const midCoords = laneData.coords;
+
+                const distanceFromEntry = this.calculateDistance(
+                    { lat: entryCoords[0], lng: entryCoords[1] },
+                    { lat: midCoords[0], lng: midCoords[1] }
+                );
+
+                const distanceFromExit = this.calculateDistance(
+                    { lat: midCoords[0], lng: midCoords[1] },
+                    { lat: exitCoords[0], lng: exitCoords[1] }
+                );
 
                 const intermediatePoint = {
-                    name: `中間点(${entrySegment.name}→${exitSegment.name})`,
-                    coordinates: [midLat, midLng],
+                    name: `中間点(${midSegment.name})`,
+                    coordinates: [midCoords[0], midCoords[1]],
                     priority: Math.round(((entrySegment.priority || 0) + (exitSegment.priority || 0)) / 2),
                     direction: direction,
-                    intersection: 'midpoint',
+                    intersection: laneData.intersection,
                     segmentType: 'intermediate',
-                    geographicalPosition: 'middle',
-                    distanceFromEntry: totalDistance / 2,
-                    distanceFromExit: totalDistance / 2,
-                    totalPathDistance: totalDistance
+                    geographicalPosition: laneData.geographicalPosition || 'middle',
+                    distanceFromEntry: distanceFromEntry,
+                    distanceFromExit: distanceFromExit,
+                    totalPathDistance: distanceFromEntry + distanceFromExit
                 };
 
-                console.log(`✅ 中間点生成: ${intermediatePoint.name} (${midLat.toFixed(6)}, ${midLng.toFixed(6)})`);
+                console.log(`✅ 中間点生成: ${intermediatePoint.name} (${midCoords[0].toFixed(6)}, ${midCoords[1].toFixed(6)})`);
 
                 return [intermediatePoint];
             }
