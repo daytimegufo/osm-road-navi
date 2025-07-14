@@ -737,7 +737,7 @@
         let endMarker = null;
         let routeLayer = null;
         let roadSegmentLayers = [];
-        const MAX_ROUTE_POINTS = 1; // 経由点は最大1点まで
+        const MAX_ROUTE_POINTS = 2; // 経由点は最大2点まで
         let routePointCounter = 0;
         let selectedNavEngine = 'osrm';
         let currentDataSource = 'preset';
@@ -767,7 +767,7 @@
             presetRoads.style.display = source === 'preset' ? 'block' : 'none';
         }
 
-        // プリセット道路データベース（完全版）
+        // プリセット道路データベース
         let PRESET_ROADS = {
             '六本木通り': {
                 name: '六本木通り',
@@ -1760,11 +1760,10 @@
                 }
             }
 
-            // 道路の入口と出口の間に中間点を生成するメソッド（改良版）
+            /// 道路の入口と出口の間に中間点を1つ生成するメソッド
             generateIntermediatePoints(segments, entrySegment, exitSegment) {
-                console.log('🛤️ 改良版中間点生成開始');
-                
-                const intermediatePoints = [];
+                console.log('🛤️ 単一中間点生成開始');
+
                 const direction = entrySegment.direction;
                 
                 // 入口と出口の座標
@@ -1784,125 +1783,31 @@
                 console.log(`📏 入口-出口間距離: ${totalDistance.toFixed(3)}km`);
                 
                 // 距離が短い場合は中間点を設置しない
-                if (totalDistance < 0.5) {
+                if (totalDistance < 2.0) {
                     console.log('⚠️ 距離が短いため中間点は設置しません');
                     return [];
                 }
                 
-                // 全セグメントから同じ方向のセグメントを抽出（入口・出口を除く）
-                const candidateSegments = [];
-                
-                for (const segment of segments) {
-                    // 入口・出口セグメントは除外
-                    if (segment.name === entrySegment.name || segment.name === exitSegment.name) {
-                        console.log(`⏭️ スキップ: ${segment.name} (入口または出口)`);
-                        continue;
-                    }
-                    
-                    for (const [laneType, laneData] of Object.entries(segment.lanes)) {
-                        if (laneData.direction === direction && laneData.coords) {
-                            const segmentCoords = { lat: laneData.coords[0], lng: laneData.coords[1] };
-                            
-                            // 入口からの距離と出口からの距離を計算
-                            const distanceFromEntry = this.calculateDistance(
-                                { lat: entryCoords[0], lng: entryCoords[1] },
-                                segmentCoords
-                            );
-                            
-                            const distanceFromExit = this.calculateDistance(
-                                segmentCoords,
-                                { lat: exitCoords[0], lng: exitCoords[1] }
-                            );
-                            
-                            // 入口と出口の間にあるかを判定（三角不等式を使用）
-                            const isIntermediatePoint = (distanceFromEntry + distanceFromExit) <= (totalDistance * 1.2);
-                            
-                            if (isIntermediatePoint && distanceFromEntry > 0.1 && distanceFromExit > 0.1) {
-                                candidateSegments.push({
-                                    name: `${segment.name} [${laneType}]`,
-                                    coordinates: laneData.coords,
-                                    priority: segment.priority,
-                                    direction: laneData.direction,
-                                    intersection: laneData.intersection,
-                                    segmentType: 'intermediate',
-                                    geographicalPosition: laneData.geographicalPosition,
-                                    distanceFromEntry: distanceFromEntry,
-                                    distanceFromExit: distanceFromExit,
-                                    totalPathDistance: distanceFromEntry + distanceFromExit
-                                });
-                                
-                                console.log(`✅ 候補追加: ${segment.name} [${laneType}]`);
-                                console.log(`  入口から: ${distanceFromEntry.toFixed(3)}km, 出口まで: ${distanceFromExit.toFixed(3)}km`);
-                            } else {
-                                console.log(`❌ 除外: ${segment.name} [${laneType}] (経路外または距離不適切)`);
-                            }
-                            
-                            break; // 同じセグメントから複数のレーンは選ばない
-                        }
-                    }
-                }
-                
-                if (candidateSegments.length === 0) {
-                    console.log('⚠️ 適切な中間点候補が見つかりません');
-                    return [];
-                }
-                
-                // 入口からの距離順にソート（方向に関係なく地理的順序で）
-                candidateSegments.sort((a, b) => a.distanceFromEntry - b.distanceFromEntry);
-                
-                console.log('📊 候補セグメント（入口からの距離順）:');
-                candidateSegments.forEach((seg, index) => {
-                    console.log(`  ${index + 1}. ${seg.name} - 入口から${seg.distanceFromEntry.toFixed(3)}km`);
-                });
-                
-                // 中間点数を決定（総距離に応じて調整）
-                let targetIntermediateCount;
-                if (totalDistance < 1.0) {
-                    targetIntermediateCount = 1;
-                } else if (totalDistance < 2.0) {
-                    targetIntermediateCount = 2;
-                } else if (totalDistance < 4.0) {
-                    targetIntermediateCount = 3;
-                } else {
-                    targetIntermediateCount = 4;
-                }
-                
-                // 利用可能な候補数に制限
-                targetIntermediateCount = Math.min(targetIntermediateCount, candidateSegments.length);
-                
-                console.log(`🎯 設定する中間点数: ${targetIntermediateCount} (候補${candidateSegments.length}から選択)`);
-                
-                // 等間隔で中間点を選択
-                if (targetIntermediateCount === 1) {
-                    // 1つの場合は最も中央に近いものを選択
-                    const midDistance = totalDistance / 2;
-                    let bestCandidate = candidateSegments[0];
-                    let minDifference = Math.abs(bestCandidate.distanceFromEntry - midDistance);
-                    
-                    for (const candidate of candidateSegments) {
-                        const difference = Math.abs(candidate.distanceFromEntry - midDistance);
-                        if (difference < minDifference) {
-                            minDifference = difference;
-                            bestCandidate = candidate;
-                        }
-                    }
-                    
-                    intermediatePoints.push(bestCandidate);
-                } else {
-                    // 複数の場合は等間隔で分散
-                    const step = Math.floor(candidateSegments.length / targetIntermediateCount);
-                    for (let i = 0; i < targetIntermediateCount; i++) {
-                        const index = Math.min(i * step, candidateSegments.length - 1);
-                        intermediatePoints.push(candidateSegments[index]);
-                    }
-                }
-                
-                console.log(`🎯 最終選択された中間点:`);
-                intermediatePoints.forEach((point, index) => {
-                    console.log(`  ${index + 1}. ${point.name} - 入口から${point.distanceFromEntry.toFixed(3)}km`);
-                });
-                
-                return intermediatePoints;
+                // 入口と出口の中間座標を算出
+                const midLat = (entryCoords[0] + exitCoords[0]) / 2;
+                const midLng = (entryCoords[1] + exitCoords[1]) / 2;
+
+                const intermediatePoint = {
+                    name: `中間点(${entrySegment.name}→${exitSegment.name})`,
+                    coordinates: [midLat, midLng],
+                    priority: Math.round(((entrySegment.priority || 0) + (exitSegment.priority || 0)) / 2),
+                    direction: direction,
+                    intersection: 'midpoint',
+                    segmentType: 'intermediate',
+                    geographicalPosition: 'middle',
+                    distanceFromEntry: totalDistance / 2,
+                    distanceFromExit: totalDistance / 2,
+                    totalPathDistance: totalDistance
+                };
+
+                console.log(`✅ 中間点生成: ${intermediatePoint.name} (${midLat.toFixed(6)}, ${midLng.toFixed(6)})`);
+
+                return [intermediatePoint];
             }
 
             // 複数点を経由するルート計算メソッド（分割戦略版）
@@ -2238,14 +2143,11 @@
                     
                     if (data.routes && data.routes.length > 0) {
                         const route = data.routes[0];
-//                        console.log(`✅ OSRM: ${(route.distance/1000).toFixed(2)}km, ${Math.round(route.duration/60)}分`);
                         const distanceKm = route.distance / 1000;
                         const durationMin = distanceKm * AVERAGE_MINUTES_PER_KM;
                         console.log(`✅ OSRM: ${distanceKm.toFixed(2)}km, 約${Math.round(durationMin)}分`);
                         return {
                             geometry: route.geometry,
-//                            distance: route.distance / 1000,
-//                            duration: route.duration / 60,distance: distanceKm,
                             distance: distanceKm,
                             duration: durationMin,
                             steps: route.legs[0]?.steps || [],
@@ -2282,15 +2184,12 @@
                         const route = data.features[0];
                         const props = route.properties;
                         
-//                        console.log(`✅ OpenRoute: ${(props.summary.distance/1000).toFixed(2)}km, ${Math.round(props.summary.duration/60)}分`);
                         const distanceKm = props.summary.distance / 1000;
                         const durationMin = distanceKm * AVERAGE_MINUTES_PER_KM;                        
                         console.log(`✅ OpenRoute: ${distanceKm.toFixed(2)}km, 約${Math.round(durationMin)}分`);
 
                         return {
                             geometry: route.geometry,
-//                            distance: props.summary.distance / 1000,
-//                            duration: props.summary.duration / 60,
                             distance: distanceKm,
                             duration: durationMin,
                             steps: props.segments?.[0]?.steps || [],
