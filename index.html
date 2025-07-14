@@ -1573,7 +1573,21 @@
                         
                         // 地点タイプに応じた処理の分岐
                         if (routePoint.finalData.type === 'road_segment') {
-                            const result = await this.calculateRoadSegmentRoute(currentPos, routePoint.finalData, nextPointData);
+                            if (routePoint.finalData.preferredEntry) {
+                                const seg = await this.calculateSegment(currentPos, routePoint.finalData.preferredEntry);
+                                if (seg) {
+                                    this.segments.push(seg);
+                                    this.totalDistance += seg.distance;
+                                    this.totalDuration += seg.duration;
+                                    currentPos = routePoint.finalData.preferredEntry;
+                                }
+                            }
+
+                            const exitHint = routePoint.finalData.nextIntersectionName ?
+                                { ...nextPointData, name: routePoint.finalData.nextIntersectionName } :
+                                nextPointData;
+
+                            const result = await this.calculateRoadSegmentRoute(currentPos, routePoint.finalData, exitHint);
                             if (result.success) {
                                 this.segments.push(...result.segments);
                                 this.totalDistance += result.totalDistance;
@@ -2666,6 +2680,9 @@
                     }
                 }
 
+                // 経由道路同士の交差点を確認し、後続道路の開始位置を調整
+                adjustStartingIntersections(routePoints);
+
                 // 安全のため、経由点は最大数に制限
                 if (routePoints.length > MAX_ROUTE_POINTS) {
                     showStatus(`経由点は最大${MAX_ROUTE_POINTS}点までです。先頭${MAX_ROUTE_POINTS}点のみ使用します`, 'info');
@@ -2893,6 +2910,45 @@
                 }).join('')}
                 ${roadCount > 8 ? '<div style="text-align: center; color: #666; font-size: 0.8em; margin-top: 10px;">...他' + (roadCount - 8) + '道路</div>' : ''}
             `;
+        }
+
+        // 経由道路間の交差点を検出し、後続道路の開始位置を調整
+        function adjustStartingIntersections(routePoints) {
+            for (let i = 1; i < routePoints.length; i++) {
+                const prev = routePoints[i - 1];
+                const curr = routePoints[i];
+                if (prev.finalData && curr.finalData &&
+                    prev.finalData.type === 'road_segment' &&
+                    curr.finalData.type === 'road_segment') {
+                    const cross = findRoadIntersection(prev.finalData, curr.finalData);
+                    if (cross) {
+                        curr.finalData.preferredEntry = { lat: cross.coords[0], lng: cross.coords[1] };
+                        curr.finalData.preferredEntryName = cross.name;
+                        prev.finalData.nextIntersectionName = cross.name;
+                        console.log(`🔗 交差点 "${cross.name}" を ${curr.finalData.name} の開始位置に設定`);
+                    }
+                }
+            }
+        }
+
+        // 2つの道路データから共通交差点を探すヘルパー
+        function findRoadIntersection(roadA, roadB) {
+            if (!roadA.segments || !roadB.segments) return null;
+            for (const segA of roadA.segments) {
+                if (!segA.lanes) continue;
+                for (const laneA of Object.values(segA.lanes)) {
+                    if (!laneA.intersection) continue;
+                    for (const segB of roadB.segments) {
+                        if (!segB.lanes) continue;
+                        for (const laneB of Object.values(segB.lanes)) {
+                            if (laneB.intersection && laneB.intersection === laneA.intersection) {
+                                return { name: laneA.intersection, coords: laneA.coords };
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
         }
 
         async function geocodeAddress(address) {
