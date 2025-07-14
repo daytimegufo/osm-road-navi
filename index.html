@@ -662,10 +662,9 @@
                             <div class="stat-value" id="routeFare">-</div>
                             <div class="stat-label">概算料金</div>
                         </div>
-                    </div>
-                    
-                    <h4>🎯 採用戦略</h4>
-                    <div id="strategyResults"></div>
+                    </div>                
+<!--                     <h4>🎯 採用戦略</h4>
+                    <div id="strategyResults"></div> -->
                     <button id="openGoogleMapsBtn" class="btn-secondary" onclick="openInGoogleMaps()" style="display: none; margin-top: 100px;">🌏 Googleマップで開く</button>
                 </div>
             </div>
@@ -738,6 +737,7 @@
         let endMarker = null;
         let routeLayer = null;
         let roadSegmentLayers = [];
+        const MAX_ROUTE_POINTS = 1; // 経由点は最大1点まで
         let routePointCounter = 0;
         let selectedNavEngine = 'osrm';
         let currentDataSource = 'preset';
@@ -2354,6 +2354,12 @@
         function addPresetRoad(roadName) {
             if (!PRESET_ROADS[roadName]) return;
             
+            // 経由点が最大数に達している場合は追加しない
+            const currentPoints = document.querySelectorAll('.route-point').length;
+            if (currentPoints >= MAX_ROUTE_POINTS) {
+                showStatus(`経由点は最大${MAX_ROUTE_POINTS}点までです`, 'error');
+                return;
+            }
             routePointCounter++;
             const routePointsContainer = document.getElementById('routePoints');
             
@@ -2398,6 +2404,13 @@
         }
 
         function addRoutePoint() {
+            // 現在の経由点数を確認し、上限に達していたら追加しない
+            const currentPoints = document.querySelectorAll('.route-point').length;
+            if (currentPoints >= MAX_ROUTE_POINTS) {
+                showStatus(`経由点は最大${MAX_ROUTE_POINTS}点までです`, 'error');
+                return;
+            }
+
             routePointCounter++;
             const routePointsContainer = document.getElementById('routePoints');
             
@@ -2671,6 +2684,12 @@
                             console.error('経由地データ解析エラー:', error);
                         }
                     }
+                }
+                
+                // 安全のため、経由点は最大数に制限
+                if (routePoints.length > MAX_ROUTE_POINTS) {
+                    showStatus(`経由点は最大${MAX_ROUTE_POINTS}点までです。先頭${MAX_ROUTE_POINTS}点のみ使用します`, 'info');
+                    routePoints.splice(MAX_ROUTE_POINTS);
                 }
 
                 const routeCalculator = new RouteCalculator();
