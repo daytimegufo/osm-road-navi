@@ -2633,7 +2633,15 @@
                 }
 
                 const routeCalculator = new RouteCalculator();
-                const googleWaypoints = routePoints.map(rp => extractWaypointCoords(rp)).filter(p => p);
+                const googleWaypoints = [];
+                routePoints.forEach(rp => {
+                    const coordsArr = extractWaypointCoords(rp);
+                    if (Array.isArray(coordsArr)) {
+                        googleWaypoints.push(...coordsArr);
+                    } else if (coordsArr) {
+                        googleWaypoints.push(coordsArr);
+                    }
+                });
 
                 const result = await routeCalculator.calculateOptimizedRoute(
                     startCoords, endCoords, routePoints
@@ -3201,21 +3209,38 @@
         }
 
         function extractWaypointCoords(rp) {
-            if (rp.finalData) {
-                if (rp.finalData.centerPoint) {
-                    return { lat: rp.finalData.centerPoint[0], lng: rp.finalData.centerPoint[1] };
-                }
-                if (rp.finalData.segments && rp.finalData.segments.length > 0) {
-                    const seg = rp.finalData.segments[0];
-                    if (seg.lanes) {
+            const points = [];
+            if (!rp.finalData) return points;
+
+            if (rp.finalData.type === 'road_segment' && rp.finalData.segments && rp.finalData.segments.length > 0) {
+                const segs = rp.finalData.segments;
+                const entrySeg = segs[0];
+                const exitSeg = segs[segs.length - 1];
+                const midSeg = segs[Math.floor(segs.length / 2)];
+
+                [entrySeg, midSeg, exitSeg].forEach(seg => {
+                    if (seg && seg.lanes) {
                         const lane = Object.values(seg.lanes)[0];
                         if (lane && lane.coords && lane.coords.length >= 2) {
-                            return { lat: lane.coords[0], lng: lane.coords[1] };
+                            points.push({ lat: lane.coords[0], lng: lane.coords[1] });
                         }
+                    }
+                });
+                return points;
+            }
+
+            if (rp.finalData.centerPoint) {
+                points.push({ lat: rp.finalData.centerPoint[0], lng: rp.finalData.centerPoint[1] });
+            } else if (rp.finalData.segments && rp.finalData.segments.length > 0) {
+                const seg = rp.finalData.segments[0];
+                if (seg.lanes) {
+                    const lane = Object.values(seg.lanes)[0];
+                    if (lane && lane.coords && lane.coords.length >= 2) {
+                        points.push({ lat: lane.coords[0], lng: lane.coords[1] });
                     }
                 }
             }
-            return null;
+            return npoints;
         }
 
         function updateGoogleMapsLink(start, end, waypoints) {
