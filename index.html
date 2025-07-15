@@ -478,7 +478,7 @@
             margin-top: 4px;
         }
         
-        /* 料金設定の見た目改善 */
+        /* 運賃設定の見た目改善 */
         .fare-setting {
             background: #fff;
             padding: 10px;
@@ -546,9 +546,9 @@
             <!-- 設定セクション（折りたたみ可能） -->
             <div class="settings-section" id="settingsSection">
                 <div class="settings-content">
-                    <h3>⚙️ 料金設定</h3>
+                    <h3>⚙️ 運賃設定</h3>
                     <div class="fare-setting">
-                        <label for="costPerKm">タクシー料金（円／km）※渋滞考慮推奨</label>
+                        <label for="costPerKm">タクシー運賃（円／km）※渋滞考慮推奨</label>
                         <div class="fare-controls">
                             <button class="btn-icon" id="decreaseCost">−</button>
                             <input type="number" id="costPerKm" value="500" min="0" step="10">
@@ -571,28 +571,31 @@
                             <span>道路セグメント詳細を表示</span>
                         </label>
                     </div>
-                </div>
-            </div>
-            
-            <div class="nav-section">
-                <h3>🗺️ ナビエンジン選択</h3>
-                
-                <div class="nav-engine-selector">
-                    <label>
-                        <input type="radio" name="navEngine" value="osrm" checked onchange="updateNavEngine(this.value)">
-                        <span class="nav-engine-option">
-                            <strong>OSRM</strong><br>
-                            <small>高速・軽量（デフォルト）</small>
-                        </span>
-                    </label>
                     
-                    <label>
-                        <input type="radio" name="navEngine" value="openroute" onchange="updateNavEngine(this.value)">
-                        <span class="nav-engine-option">
-                            <strong>OpenRouteService</strong><br>
-                            <small>詳細ルート・回避機能</small>
-                        </span>
-                    </label>
+                    <h3>🗺️ ナビエンジン選択</h3>
+                    <div class="nav-engine-selector">
+                        <label>
+                            <input type="radio" name="navEngine" value="osrm" checked onchange="updateNavEngine(this.value)">
+                            <span class="nav-engine-option">
+                                <strong>OSRM</strong><br>
+                                <small>高速・軽量（デフォルト）</small>
+                            </span>
+                        </label>
+
+                        <label>
+                            <input type="radio" name="navEngine" value="openroute" onchange="updateNavEngine(this.value)">
+                            <span class="nav-engine-option">
+                                <strong>OpenRouteService</strong><br>
+                                <small>詳細ルート・回避機能</small>
+                            </span>
+                        </label>
+                    </div>
+
+                    <h3>🛣️ 経由道路データソース</h3>
+                    <div class="data-source-toggle">
+                        <div class="toggle-btn active" onclick="selectDataSource('preset')">📋 プリセット</div>
+                        <div class="toggle-btn" onclick="selectDataSource('manual')">✏️ 手動</div>
+                    </div>
                 </div>
             </div>
             
@@ -617,12 +620,6 @@
             </div>
             
             <div class="nav-section">
-                <h3>🛣️ 経由道路データソース</h3>
-                
-                <div class="data-source-toggle">
-                    <div class="toggle-btn active" onclick="selectDataSource('preset')">📋 プリセット</div>
-                    <div class="toggle-btn" onclick="selectDataSource('manual')">✏️ 手動</div>
-                </div>
                 
                 <div class="preset-roads" id="presetRoads">
                     <h4>📋 利用可能プリセット道路</h4>
@@ -660,7 +657,7 @@
                         </div>
                         <div class="stat-item">
                             <div class="stat-value" id="routeFare">-</div>
-                            <div class="stat-label">概算料金</div>
+                            <div class="stat-label">概算運賃</div>
                         </div>
                     </div>                
                     <button id="openGoogleMapsBtn" class="btn-secondary" onclick="openInGoogleMaps()" style="display: none; margin-top: 100px;">🌏 Googleマップで開く</button>
@@ -684,7 +681,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     
     <script>
-        // ルート検索後の概算料金計算に使う単価（円／km）
+        // ルート検索後の概算運賃計算に使う単価（円／km）
         let costPerKm = 500;
         // 東京10km平均移動時間27分15秒から算出した1kmあたりの平均移動時間（分）
         const AVERAGE_MINUTES_PER_KM = 27.25 / 10;
@@ -2736,7 +2733,7 @@
                     document.getElementById('routeDistance').textContent = result.totalDistance.toFixed(1) + ' km';
                     document.getElementById('routeTime').textContent = Math.round(result.totalDuration) + ' 分';
                     
-                    // 概算料金計算（料金設定を反映）
+                    // 概算運賃計算（運賃設定を反映）
                     const fare = Math.round(result.totalDistance * costPerKm);
                     document.getElementById('routeFare').textContent = fare.toLocaleString() + ' 円';
                     
@@ -3357,21 +3354,21 @@
                 // 数値直接入力時
                 input.addEventListener('change', () => {
                     costPerKm = parseInt(input.value, 10) || 0;
-                    showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
+                    showStatus(`運賃設定を ${costPerKm} 円/km に変更しました`, 'success');
                 });
 
                 // − ボタン
                 btnDec.addEventListener('click', () => {
                     costPerKm = Math.max(0, costPerKm - 10);
                     input.value = costPerKm;
-                    showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
+                    showStatus(`運賃設定を ${costPerKm} 円/km に変更しました`, 'success');
                 });
 
                 // ＋ ボタン
                 btnInc.addEventListener('click', () => {
                     costPerKm += 10;
                     input.value = costPerKm;
-                    showStatus(`料金設定を ${costPerKm} 円/km に変更しました`, 'success');
+                    showStatus(`運賃設定を ${costPerKm} 円/km に変更しました`, 'success');
                 });
 
                 // 表示設定のイベントリスナー
